@@ -1,0 +1,9 @@
+useDynLib(dlm)
+importFrom("stats", "tsdiag")
+exportPattern("^dlm")
+export(arms, ARtransPars, as.dlm, bdiag, convex.bounds, is.dlm,
+       rwishart)
+S3method(print, dlm)
+S3method("+", dlm)
+S3method(residuals, dlmFiltered)
+S3method(tsdiag, dlmFiltered)
