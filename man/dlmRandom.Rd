@@ -11,13 +11,13 @@ dlmRandom(m, p, nobs = 0, JFF, JV, JGG, JW)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{m}{Dimension of the observation vector.}
-  \item{p}{Dimension of the state vector.}
-  \item{nobs}{Number of states and observations to simulate from the model.}
-  \item{JFF}{Should the model have a time-varying \code{FF} component?}
-  \item{JV}{Should the model have a time-varying \code{V} component?}
-  \item{JGG}{Should the model have a time-varying \code{GG} component?}
-  \item{JW}{Should the model have a time-varying \code{W} component?}
+  \item{m}{dimension of the observation vector.}
+  \item{p}{dimension of the state vector.}
+  \item{nobs}{number of states and observations to simulate from the model.}
+  \item{JFF}{should the model have a time-varying \code{FF} component?}
+  \item{JV}{should the model have a time-varying \code{V} component?}
+  \item{JGG}{should the model have a time-varying \code{GG} component?}
+  \item{JW}{should the model have a time-varying \code{W} component?}
 }
 \details{
   The function generates randomly the system and oservation matrices and
@@ -38,7 +38,7 @@ dlmRandom(m, p, nobs = 0, JFF, JV, JGG, JW)
   If \code{nobs} is zero, only the \code{mod} component is returned.
 }
 \references{Anderson and Moore, Optimal filtering, Prentice-Hall (1979)}
-\author{Giovanni Petris \email{<GPetris@uark.edu>}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 \seealso{\code{\link{dlm}}}
 \examples{
 dlmRandom(1, 3, 5)

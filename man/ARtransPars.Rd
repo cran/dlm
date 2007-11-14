@@ -12,7 +12,7 @@ ARtransPars(raw)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{raw}{A vector of length p}
+  \item{raw}{a vector of length p}
 }
 \details{
   The function first maps each element of \code{raw} to (0,1) using
@@ -27,7 +27,7 @@ ARtransPars(raw)
 \references{Jones, 1987. Randomly choosing parameters from the
   stationarity and invertibility region of autoregressive-moving average
   models. \emph{Applied Statistics}, 36.}
-\author{Giovanni Petris, \email{<GPetris@uark.edu>}}
+\author{Giovanni Petris, \email{GPetris@uark.edu}}
 
 \examples{
 (ar <- ARtransPars(rnorm(5)))

@@ -1,10 +1,12 @@
 Package: dlm
-Title: Functions for DLM Analysis
-Version: 0.7-1
-Date: 2006-08-22
-Author: Giovanni Petris
-Description: Maximum likelihood and Bayesian analysis
-  of Dynamic Linear Models 
+Title: Bayesian and Likelihood Analysis of Dynamic Linear Models
+Version: 0.8-1
+Date: 2007-11-14
+Suggests: MASS
+Author: Giovanni Petris <GPetris@uark.edu>
+Description: Maximum likelihood, Kalman filtering and smoothing, and Bayesian
+  analysis of Normal linear State Space models, also known as 
+  Dynamic Linear Models 
 Maintainer: Giovanni Petris <GPetris@uark.edu>
 License: GPL (version 2 or later)
-Packaged: Fri Aug 25 10:12:24 2006; hornik
+Packaged: Mon Nov 19 10:31:32 2007; gpetris

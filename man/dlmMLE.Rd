@@ -11,16 +11,16 @@ dlmMLE(y, parm, build, method = "L-BFGS-B", ..., debug = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y}{A vector, matrix, or time series of data.}
-  \item{parm}{Vector of initial values - for the optimization routine -
+  \item{y}{a vector, matrix, or time series of data.}
+  \item{parm}{vector of initial values - for the optimization routine -
     of the unknown parameters.} 
-  \item{build}{A function that takes a vector of the same length as
+  \item{build}{a function that takes a vector of the same length as
     \code{parm} and returns an object of class dlm, or a list that may
     be interpreted as such.}
-  \item{method}{Passed to \code{optim}.}
-  \item{...}{Additional arguments passed to \code{optim} and
+  \item{method}{passed to \code{optim}.}
+  \item{...}{additional arguments passed to \code{optim} and
     \code{build}.}
-  \item{debug}{If \code{TRUE}, the likelihood calculations are done
+  \item{debug}{if \code{debug=TRUE}, the likelihood calculations are done
     entirely in R, otherwise C functions are used.}
 }
 \details{

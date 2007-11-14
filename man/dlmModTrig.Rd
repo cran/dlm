@@ -9,14 +9,14 @@
 dlmModTrig(s, q, om, tau, m0, C0, dV = 1, dW = 0)
 }
 \arguments{
-  \item{s}{The period, if integer.}
-  \item{q}{Number of harmonics in the DLM.}
-  \item{om}{The frequency.}
-  \item{tau}{The period, if not an integer.}
+  \item{s}{the period, if integer.}
+  \item{q}{number of harmonics in the DLM.}
+  \item{om}{the frequency.}
+  \item{tau}{the period, if not an integer.}
   \item{m0}{\eqn{m_0}{m0}}
   \item{C0}{\eqn{C_0}{C0}}
-  \item{dV}{Variance of the observational noise.}
-  \item{dW}{A single number expressing the variance of the system
+  \item{dV}{variance of the observational noise.}
+  \item{dW}{a single number expressing the variance of the system
     noise. }
 }
 \details{

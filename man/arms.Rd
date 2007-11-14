@@ -9,11 +9,11 @@ ARMS is used along randomly selected straight lines through the current point.
 arms(y.start, myldens, indFunc, n.sample, ...)
 }
 \arguments{
-  \item{y.start}{Initial point}
-  \item{myldens}{Univariate or multivariate log target density}
-  \item{indFunc}{Indicator function of the convex support of the target density}
-  \item{n.sample}{Desired sample size}
-  \item{...}{Parameters passed to \code{myldens} and \code{indFunc}}
+  \item{y.start}{initial point}
+  \item{myldens}{univariate or multivariate log target density}
+  \item{indFunc}{indicator function of the convex support of the target density}
+  \item{n.sample}{desired sample size}
+  \item{...}{parameters passed to \code{myldens} and \code{indFunc}}
 }
 \details{
 Strictly speaking, the support of the target density must be a bounded convex set. 
@@ -42,7 +42,7 @@ Adaptive rejection Metropolis sampling within Gibbs sampling
   \bold{44}:455--472.
 }
 
-\author{Giovanni Petris <\email{GPetris@uark.edu}>. Original C by W. Gilks}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 \note{The function is based on original C code by W. Gilks for the 
 univariate case, 
 \url{http://www.mrc-bsu.cam.ac.uk/pub/methodology/adaptive_rejection/}.

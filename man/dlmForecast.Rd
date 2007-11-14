@@ -10,18 +10,18 @@
   dlmForecast(mod, nAhead = 1, method = c("plain", "svd"), sampleNew = FALSE)
 }
 \arguments{
-  \item{mod}{An object of class \code{"dlm"}, or a list with components
+  \item{mod}{an object of class \code{"dlm"}, or a list with components
     \code{m0}, \code{C0},
     \code{FF}, \code{V}, \code{GG}, and \code{W}, defining the model
     and the parameters of the prior distribution. \code{mod} can also be
     an object of class \code{"dlmFiltered"}, such as the output from
     \code{dlmFilter}.}
-  \item{nAhead}{Number of steps ahead for which a forecast is
+  \item{nAhead}{number of steps ahead for which a forecast is
     requested.}
   \item{method}{\code{method="svd"} uses singular value decomposition
     for the calculations. Corrently, only \code{method="plain"}
     is implemented.}
-  \item{sampleNew}{If \code{sampleNew=n} for an integer \code{n}, them a
+  \item{sampleNew}{if \code{sampleNew=n} for an integer \code{n}, them a
     sample of size \code{n} from the forecast distribution of states and
     observables will be returned.}
 }
@@ -49,9 +49,9 @@ The last two components are not present if \code{sampleNew=FALSE}.
 set.seed(353)
 n <- 20; m <- 1; p <- 5
 mod <- dlmModPoly() + dlmModSeas(4, dV=0)
-mod$W[] <- rwishart(2*p,p) * 1e-1
-mod$m0[] <- rnorm(p, sd=5)
-mod$C0[] <- diag(p) * 1e-1
+W(mod) <- rwishart(2*p,p) * 1e-1
+m0(mod) <- rnorm(p, sd=5)
+C0(mod) <- diag(p) * 1e-1
 new <- 100
 fore <- dlmForecast(mod, nAhead=n, sampleNew=new)
 ciTheory <- (outer(sapply(fore$Q, FUN=function(x) sqrt(diag(x))), qnorm(c(0.1,0.9))) +

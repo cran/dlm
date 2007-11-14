@@ -1,9 +1,13 @@
 useDynLib(dlm)
-importFrom("stats", "tsdiag")
 exportPattern("^dlm")
 export(arms, ARtransPars, as.dlm, bdiag, convex.bounds, is.dlm,
-       rwishart)
+       rwishart, mcmcMean, mcmcSD, ergMean, FF, "FF<-", V, "V<-",
+       GG, "GG<-", W, "W<-", m0, "m0<-", C0, "C0<-", "%+%",
+       dropFirst)
+importFrom(stats, tsdiag)
 S3method(print, dlm)
+S3method(print, mcmcMean)
 S3method("+", dlm)
+S3method(dlmSmooth, dlmFiltered)
 S3method(residuals, dlmFiltered)
 S3method(tsdiag, dlmFiltered)

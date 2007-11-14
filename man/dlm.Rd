@@ -14,7 +14,7 @@ as.dlm(obj)
 is.dlm(obj)
 }
 \arguments{
-  \item{...}{A list with named elements \code{m0},
+  \item{...}{list with named elements \code{m0},
     \code{C0}, \code{FF}, \code{V}, \code{GG}, \code{W} and,
     optionally, 
     \code{JFF}, \code{JV}, \code{JGG}, \code{JW}, and
@@ -29,7 +29,7 @@ is.dlm(obj)
     \code{JV}, \code{JGG}, and \code{JW}. \code{...} may have additional
     components, that are not used by \code{dlm}. The named components
     may also be passed to the function as individual arguments.}     
-  \item{obj}{An arbitrary \R object.}
+  \item{obj}{an arbitrary \R object.}
 }
 \value{
   For \code{dlm}, an object of class \code{"dlm"}.}

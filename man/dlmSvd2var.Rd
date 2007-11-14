@@ -12,9 +12,9 @@ dlmSvd2var(u, d)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{u}{A square matrix, or a list of square matrices for a
+  \item{u}{a square matrix, or a list of square matrices for a
     vectorized usage.}
-  \item{d}{A vector, or a matrix for a vectorized usage.}
+  \item{d}{a vector, or a matrix for a vectorized usage.}
 }
 \details{
   The SVD of a nonnegative definite \eqn{n} by \eqn{n} square matrix
@@ -45,9 +45,9 @@ x <- dlmFilter(Nile, dlmModPoly(1, dV=15099, dW=1469))
 x$se <- sqrt(unlist(dlmSvd2var(x$U.C, x$D.C)))
 ## Level with 50\% probability interval
 plot(Nile, lty=2)
-lines(window(x$m, start=start(Nile)), col="blue")
-lines(window(x$m - .67*x$se, start=start(Nile)), lty=3, col="blue")
-lines(window(x$m + .67*x$se, start=start(Nile)), lty=3, col="blue")
+lines(dropFirst(x$m), col="blue")
+lines(dropFirst(x$m - .67*x$se), lty=3, col="blue")
+lines(dropFirst(x$m + .67*x$se), lty=3, col="blue")
 }
 \keyword{array}% at least one, from doc/KEYWORDS
 \keyword{misc}% __ONLY ONE__ keyword per line

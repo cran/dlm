@@ -2,19 +2,19 @@
 \alias{dlmModPoly}
 \title{Create an n-th order polynomial DLM}
 \description{
-  The function creates an n-th order polynomial DLM.
+  The function creates an \eqn{n}{n-}th order polynomial DLM.
 }
 \usage{
-dlmModPoly(order = 2, dV = 1, dW = c(rep(0, order - 1), 1), m0 = rep(0,
-order), C0 = 1e+07 * diag(nrow = order)) 
+dlmModPoly(order = 2, dV = 1, dW = c(rep(0, order - 1), 1),
+           m0 = rep(0, order), C0 = 1e+07 * diag(nrow = order)) 
 }
 \arguments{
-  \item{order}{The order of the polynomial model. The default
+  \item{order}{order of the polynomial model. The default
     corresponds to a stochastic linear trend.}
-  \item{dV}{The variance of the observational noise.}
-  \item{dW}{The diagonal elements of the variance matrix of the system noise.}
-  \item{m0}{\eqn{m0}, the expected value of the pre-sample state vector.}
-  \item{C0}{\eqn{C0}, the variance matrix of the pre-sample state vector.}
+  \item{dV}{variance of the observational noise.}
+  \item{dW}{diagonal elements of the variance matrix of the system noise.}
+  \item{m0}{\eqn{m_0}{m0}, the expected value of the pre-sample state vector.}
+  \item{C0}{\eqn{C_0}{C0}, the variance matrix of the pre-sample state vector.}
 }
   
 \value{

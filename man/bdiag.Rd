@@ -10,14 +10,14 @@ bdiag(...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{...}{Individual matrices, or a list of matrices.}
+  \item{...}{individual matrices, or a list of matrices.}
 }
 \details{
 }
 \value{
   A matrix obtained by combining the arguments.
 }
-\author{Found on R-help -- author??}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \examples{
 bdiag(matrix(1:4,2,2),diag(3))

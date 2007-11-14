@@ -7,15 +7,16 @@
 }
 \usage{
 dlmModReg(X, addInt = TRUE, dV = 1, dW = rep(0, NCOL(X) + addInt),
-m0 = rep(0, length(dW)), C0 = 1e+07 * diag(nrow = length(dW)))
+          m0 = rep(0, length(dW)),
+          C0 = 1e+07 * diag(nrow = length(dW)))
 }
 \arguments{
-  \item{X}{The design matrix}
-  \item{addInt}{Logical: should an intercept be added?}
-  \item{dV}{Variance of the observations.}
-  \item{dW}{Variance of the system noise.}
-  \item{m0}{\eqn{m0}}
-  \item{C0}{\eqn{C0}}
+  \item{X}{the design matrix}
+  \item{addInt}{logical: should an intercept be added?}
+  \item{dV}{variance of the observations.}
+  \item{dW}{variance of the system noise.}
+  \item{m0}{\eqn{m_0}{m0}}
+  \item{C0}{\eqn{C_0}{C0}}
 }
 \details{
   By setting \code{dW} equal to a nonzero vector one obtains a DLM

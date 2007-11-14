@@ -10,11 +10,11 @@ use within \code{\link{arms}}.
 convex.bounds(x, dir, indFunc, ..., tol=1e-07)
 }
 \arguments{
-  \item{x}{A point within the set}
-  \item{dir}{A vector specifying a direction}
-  \item{indFunc}{Indicator function of the set}
-  \item{...}{Parameters passed to \code{indFunc}}
-  \item{tol}{Tolerance}
+  \item{x}{a point within the set}
+  \item{dir}{a vector specifying a direction}
+  \item{indFunc}{indicator function of the set}
+  \item{...}{parameters passed to \code{indFunc}}
+  \item{tol}{tolerance}
 }
 \details{
 Uses a bisection algorithm along a line having parametric representation
@@ -24,7 +24,7 @@ Uses a bisection algorithm along a line having parametric representation
 A vector \code{ans} of length two. The boundaries of the set are
 \code{x + ans[1] * dir} and \code{x + ans[2] * dir}.
 }
-\author{Giovanni Petris <\email{GPetris@uark.edu}>}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \examples{
 ## boundaries of a unit circle

@@ -10,9 +10,9 @@ rwishart(df, p = nrow(SqrtSigma), SqrtSigma = diag(p))
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{df}{Degrees of freedom. It has to be integer.}
-  \item{p}{Dimension of the matrix to simulate.}
-  \item{SqrtSigma}{A "square root" of the matrix parameter Sigma of the 
+  \item{df}{degrees of freedom. It has to be integer.}
+  \item{p}{dimension of the matrix to simulate.}
+  \item{SqrtSigma}{a \emph{square root} of the matrix parameter Sigma of the 
   Wishart distribution. Sigma must be equal to \code{crossprod(SqrtSigma)}.}
 }
 \value{
@@ -21,8 +21,8 @@ rwishart(df, p = nrow(SqrtSigma), SqrtSigma = diag(p))
   \code{crossprod(SqrtSigma)}	
 }
 \references{Mardia, Kent and Bibby (1979). Multivariate analysis.}
-\author{B.Venables, from S-news.}
-\note{}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
+\note{From a suggestion of B.Venables, posted on S-news}
 \section{Warning}{The function only works for an integer number 
 of degrees of freedom.}
  

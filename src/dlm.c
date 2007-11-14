@@ -58,14 +58,16 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 /***** components of the list 'mod', not on their names. *****/     
 
     SEXP val;
-    int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork;
+    int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
+	numNA, *whereNA, numGood, *good;
     int stvFF=INTEGER(tvFF)[0], stvV=INTEGER(tvV)[0], stvGG=INTEGER(tvGG)[0], 
 	stvW=INTEGER(tvW)[0], stvFV, *sJFF, *sJV, *sJGG, *sJW, nrJFF, nrJV, nrJGG, nrJW;
     double *sy=REAL(y), *sm0, *sFF, *sV, *sGG, *sW, *sX, *Ux,  
         *Dx, *sqrtV, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv, ll=0.0;
-    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work;
+    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
+	*sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP;
     char la_jobz='S';
 
     PROTECT(val = allocVector(REALSXP, 1));
@@ -97,6 +99,14 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
     e = (double *) R_alloc( m, sizeof(double) );
     tmpMat2 = (double *) R_alloc( m * p, sizeof(double) );
 
+    /* space needed to deal with missing values */
+    whereNA = (int *) R_alloc( m, sizeof(int) );
+    if (m > 1){
+	good = (int *) R_alloc( m, sizeof(int) );
+	sqrtVTMP = (double *) R_alloc( m * m, sizeof(double) );
+	sqrtVinvTMP = (double *) R_alloc( m * m, sizeof(double) );
+	tF_VinvTMP = (double *) R_alloc( p * m, sizeof(double) );
+    }
     /* allocate space for a la_m by la_n matrix */
     tmpMat = (double *) R_alloc( la_m * la_n, sizeof(double) ); 
     /* space for singular values */
@@ -224,9 +234,6 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 	}
     }
     
-/*      pmatrix("sqrtW",sqrtW,p,p,p); pmatrix("sqrtV",sqrtV,m,m,m); */
-/*      pmatrix("sqrtVinv",sqrtVinv,m,m,m);pmatrix("tF_Vinv",tF_Vinv,p,p,m);error(""); */
-
     /** loop over observations **/
     for (t = 0; t < n; t++) { 
 	/** set time-varying matrices **/
@@ -305,151 +312,391 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 		    tF_Vinv[i + j * p] = tmp;
 		}
 	}
-        /** Prior **/
-        for (i = 0; i < p; i++) {
-            tmp = 0.0;
-            for (k = 0; k < p; k++)
-                tmp += sGG[i + p * k] * sm0[k];
-            a[i] = tmp;
-        }
-        
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx[i];
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sGG[j + l * p] * Ux[i * p + l];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < p; i++) 
-            for (j = 0; j < p; j++) 
-                tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
-        l = 2 * p;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++)
-                Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
-            Dx_prior[i] = la_s[i];
-        }
-/*	pmatrix("Ux_prior",Ux_prior,p,p,p); pmatrix("Dx_prior",Dx_prior,1,1,p); */
-/*          pmatrix("a",a,1,1,p); */
 
-        /** One-step forecast **/
-        for (i = 0; i < m; i++) {
-            tmp = 0.0;
-            for (j = 0; j < p; j++)
-                tmp += sFF[i + j * m] * a[j];
-            f[i] = tmp;
-        }
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx_prior[i];
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sFF[j + l * m] * Ux_prior[l + i * p];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < m; i++) 
-            for (j = 0; j < m; j++) 
-                tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
-        
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &m, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < m; i++) {
-            for (j = 0; j < m; j++)
-                Uy[i + j * m] = la_vt[j + i * max_m_p];
-            Dy[i] = la_s[i];
-        }
-/*          pmatrix("Uy",Uy,m,m,m); pmatrix("Dy",Dy,1,1,m);  */
-/*          pmatrix("f",f,1,1,m); error("");  */
-        
-        /** Posterior **/
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < m; k++)
-                    tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
-                tmpMat2[i + j * m] = tmp;
-            }
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = 1 / Dx_prior[i];
-            tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
-            for (j = i + 1; j < p; j++) 
-                tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
-        }
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
-                Ux[i + j * p] = tmp;
-            }
-            tmp = 1 / la_s[i];
-            Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
-        }
-        for (i = 0; i < m; i++)
-            e[i] = sy[t + i * n] - f[i];
-	for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_Vinv[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
-                tmpMat2[j + i * m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = a[i];
-            for (j = 0; j < m; j++)
-                tmp += tmpMat2[j + i * m] * e[j];
-            sm0[i] = tmp;
-        }
-/*          pmatrix("Ux",Ux,p,p,p); pmatrix("Dx",Dx, 1,1,p);  */
-/*          pmatrix("m0",sm0,1,1,p); error(""); */
+	/** check for missing values **/
+	numNA = 0;
+	for (i = 0; i < m; i++)
+	    if (ISNA(sy[t + i * n]))  
+		whereNA[numNA++] = i; 
 
-        /** Update negative log likelihood **/
-        for (i = 0; i < m; i++) {
-            tmp =0.0;
-            for (j = 0; j < m; j++)
-                tmp += Uy[j + i * m] * e[j];
-            ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
-        }
+	if (numNA == 0) { /** no missing values **/
+
+	    /** Prior **/
+	    for (i = 0; i < p; i++) {
+		tmp = 0.0;
+		for (k = 0; k < p; k++)
+		    tmp += sGG[i + p * k] * sm0[k];
+		a[i] = tmp;
+	    }
+        
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx[i];
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sGG[j + l * p] * Ux[i * p + l];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < p; i++) 
+		for (j = 0; j < p; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+	    l = 2 * p;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++)
+		    Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		Dx_prior[i] = la_s[i];
+	    }
+
+	    /** One-step forecast **/
+	    for (i = 0; i < m; i++) {
+		tmp = 0.0;
+		for (j = 0; j < p; j++)
+		    tmp += sFF[i + j * m] * a[j];
+		f[i] = tmp;
+	    }
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx_prior[i];
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sFF[j + l * m] * Ux_prior[l + i * p];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < m; i++) 
+		for (j = 0; j < m; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
+        
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &m, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < m; i++) {
+		for (j = 0; j < m; j++)
+		    Uy[i + j * m] = la_vt[j + i * max_m_p];
+		Dy[i] = la_s[i];
+	    }
+        
+	    /** Posterior **/
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < m; k++)
+			tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
+		    tmpMat2[i + j * m] = tmp;
+		}
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = 1 / Dx_prior[i];
+		tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		for (j = i + 1; j < p; j++) 
+		    tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
+	    }
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+		    Ux[i + j * p] = tmp;
+		}
+		tmp = 1 / la_s[i];
+		Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
+	    }
+	    for (i = 0; i < m; i++)
+		e[i] = sy[t + i * n] - f[i];
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_Vinv[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+		    tmpMat2[j + i * m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = a[i];
+		for (j = 0; j < m; j++)
+		    tmp += tmpMat2[j + i * m] * e[j];
+		sm0[i] = tmp;
+	    }
+
+	    /** Update negative log likelihood **/
+	    for (i = 0; i < m; i++) {
+		tmp =0.0;
+		for (j = 0; j < m; j++)
+		    tmp += Uy[j + i * m] * e[j];
+		ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
+	    }
+	} else {
+	    if (numNA == m) { /** all missing **/
+
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sGG[i + j * p] * sm0[j];
+		    tmpMat2[i] = tmp;
+		}
+		for (i = 0; i < p; i++)
+		    sm0[i] = tmpMat2[i];
+		
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k];
+		    a[i] = tmp;
+		}
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+		    
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx[i] = la_s[i];
+		}
+
+	    } else { /** some missing **/
+
+		numGood = m - numNA;
+		for (i = j = k = 0; i < m; i++) 
+		    if (k + 1 <= numNA && whereNA[k] == i) 
+			k++;
+		    else
+			good[j++] = i;
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) 
+			tmpMat[i + la_m * j] = tmpMat[j + la_m * i] = 
+			    REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]]; /* V */
+		    tmpMat[i + la_m * j] = REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]];
+		}
+		F77_CALL(dgesdd)(&la_jobz,
+				 &numGood, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    tmp = sqrt( la_s[i] );
+		    tmp1 = 1 / tmp;
+		    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
+		    for (j = 0; j < numGood; j++) {
+			sqrtVTMP[i + j * m] = tmp * la_vt[i + j * max_m_p]; 
+			sqrtVinvTMP[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
+		    }
+		}
+
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[k + i * m] * sqrtVinvTMP[k + j * m];
+			tmpMat[i + j * la_m] = tmpMat[j + i * la_m] = tmp;
+		    }
+		    tmp = 0.0;
+		    for (k = 0; k < numGood; k++)
+			tmp += SQR( sqrtVinvTMP[k + i * m] );
+		    tmpMat[i + i * la_m] = tmp;
+		}
+		for (i = 0; i < p ; i++) 
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sFF[good[k] + i * m] * tmpMat[k + j * la_m];
+			tF_VinvTMP[i + j * p] = tmp;
+		    }
+
+		/** Prior **/
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k];
+		    a[i] = tmp;
+		}
+		
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx_prior[i] = la_s[i];
+		}
+
+		/** One-step forecast **/
+		for (i = 0; i < numGood; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sFF[good[i] + j * m] * a[j];
+		    f[i] = tmp;
+		}
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx_prior[i];
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sFF[good[j] + l * m] * Ux_prior[l + i * p];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < numGood; i++) 
+		    for (j = 0; j < numGood; j++) 
+			tmpMat[i + p + j * la_m] = sqrtVTMP[i + j * m];
+
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < numGood; j++)
+			Uy[i + j * m] = la_vt[j + i * max_m_p];
+		    Dy[i] = la_s[i];
+		}
+
+		/** Posterior **/
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[i + k * m] * sFF[good[k] + j * m];
+			tmpMat2[i + j * m] = tmp;
+		    }
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = 1 / Dx_prior[i];
+		    tmpMat[i + numGood + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		    for (j = i + 1; j < p; j++) 
+			tmpMat[j + numGood + i * la_m] = tmpMat[i + numGood + j * la_m] = 0.0;
+		}
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+			Ux[i + j * p] = tmp;
+		    }
+		    tmp = 1 / la_s[i];
+		    Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
+		}
+		for (i = 0; i < numGood; i++)
+		    e[i] = sy[t + good[i] * n] - f[i];
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_VinvTMP[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+			tmpMat2[j + i * m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = a[i];
+		    for (j = 0; j < numGood; j++)
+   			tmp += tmpMat2[j + i * m] * e[j];
+		    sm0[i] = tmp;
+		}
+		
+		/** Update negative log likelihood **/
+		for (i = 0; i < numGood; i++) {
+		    tmp =0.0;
+		    for (j = 0; j < numGood; j++)
+			tmp += Uy[j + i * m] * e[j];
+		    ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
+		}
+	    }
+	}
     }
 
     REAL(val)[0] = 0.5 * ll;
@@ -465,12 +712,14 @@ SEXP dlmLL0(SEXP y, SEXP mod)
 /***** components of the list 'mod', not on their names. *****/     
 
     SEXP val;
-    int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork;
+    int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
+	numNA, *whereNA, numGood, *good;
     double *sy=REAL(y), *sm0, *sFF, *sGG, *Ux,  
         *Dx, *sqrtV, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv, ll=0.0;
-    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work;
+    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
+	*sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP;
     char la_jobz='S';
 
     PROTECT(val = allocVector(REALSXP, 1));
@@ -500,6 +749,14 @@ SEXP dlmLL0(SEXP y, SEXP mod)
     e = (double *) R_alloc( m, sizeof(double) );
     tmpMat2 = (double *) R_alloc( m * p, sizeof(double) );
 
+    /* space needed to deal with missing values */
+    whereNA = (int *) R_alloc( m, sizeof(int) );
+    if (m > 1){
+	good = (int *) R_alloc( m, sizeof(int) );
+	sqrtVTMP = (double *) R_alloc( m * m, sizeof(double) );
+	sqrtVinvTMP = (double *) R_alloc( m * m, sizeof(double) );
+	tF_VinvTMP = (double *) R_alloc( p * m, sizeof(double) );
+    }
     /* allocate space for a la_m by la_n matrix */
     tmpMat = (double *) R_alloc( la_m * la_n, sizeof(double) ); 
     /* space for singular values */
@@ -601,156 +858,392 @@ SEXP dlmLL0(SEXP y, SEXP mod)
             tF_Vinv[i + j * p] = tmp;
         }
 
-/*      pmatrix("sqrtW",sqrtW,p,p,p); pmatrix("sqrtV",sqrtV,m,m,m); */
-/*      pmatrix("sqrtVinv",sqrtVinv,m,m,m);pmatrix("tF_Vinv",tF_Vinv,p,p,m);error(""); */
-
     /** loop over observations **/
     for (t = 0; t < n; t++) { 
-        /** Prior **/
-        for (i = 0; i < p; i++) {
-            tmp = 0.0;
-            for (k = 0; k < p; k++)
-                tmp += sGG[i + p * k] * sm0[k];
-            a[i] = tmp;
-        }
-        
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx[i];
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sGG[j + l * p] * Ux[i * p + l];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < p; i++) 
-            for (j = 0; j < p; j++) 
-                tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
-        l = 2 * p;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++)
-                Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
-            Dx_prior[i] = la_s[i];
-        }
-/*	pmatrix("Ux_prior",Ux_prior,p,p,p); pmatrix("Dx_prior",Dx_prior,1,1,p); */
-/*          pmatrix("a",a,1,1,p); */
+	/** check for missing values **/
+	numNA = 0;
+	for (i = 0; i < m; i++)
+	    if (ISNA(sy[t + i * n]))  
+		whereNA[numNA++] = i; 
 
-        /** One-step forecast **/
-        for (i = 0; i < m; i++) {
-            tmp = 0.0;
-            for (j = 0; j < p; j++)
-                tmp += sFF[i + j * m] * a[j];
-            f[i] = tmp;
-        }
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx_prior[i];
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sFF[j + l * m] * Ux_prior[l + i * p];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < m; i++) 
-            for (j = 0; j < m; j++) 
-                tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
-        
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &m, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < m; i++) {
-            for (j = 0; j < m; j++)
-                Uy[i + j * m] = la_vt[j + i * max_m_p];
-            Dy[i] = la_s[i];
-        }
-/*          pmatrix("Uy",Uy,m,m,m); pmatrix("Dy",Dy,1,1,m);  */
-/*          pmatrix("f",f,1,1,m); error("");  */
-        
-        /** Posterior **/
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < m; k++)
-                    tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
-                tmpMat2[i + j * m] = tmp;
-            }
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = 1 / Dx_prior[i];
-            tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
-            for (j = i + 1; j < p; j++) 
-                tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
-        }
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
-                Ux[i + j * p] = tmp;
-            }
-            tmp = 1 / la_s[i];
-            Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
-        }
-        for (i = 0; i < m; i++)
-            e[i] = sy[t + i * n] - f[i];
-	for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_Vinv[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
-                tmpMat2[j + i * m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = a[i];
-            for (j = 0; j < m; j++)
-                tmp += tmpMat2[j + i * m] * e[j];
-            sm0[i] = tmp;
-        }
-/*          pmatrix("Ux",Ux,p,p,p); pmatrix("Dx",Dx, 1,1,p);  */
-/*          pmatrix("m0",sm0,1,1,p); error(""); */
+	if (numNA == 0) { /** no missing values **/
 
-        /** Update negative log likelihood **/
-        for (i = 0; i < m; i++) {
-            tmp =0.0;
-            for (j = 0; j < m; j++)
-                tmp += Uy[j + i * m] * e[j];
-            ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
-        }
+	    /** Prior **/
+	    for (i = 0; i < p; i++) {
+		tmp = 0.0;
+		for (k = 0; k < p; k++)
+		    tmp += sGG[i + p * k] * sm0[k];
+		a[i] = tmp;
+	    }
+        
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx[i];
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sGG[j + l * p] * Ux[i * p + l];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < p; i++) 
+		for (j = 0; j < p; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+	    l = 2 * p;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++)
+		    Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		Dx_prior[i] = la_s[i];
+	    }
+
+	    /** One-step forecast **/
+	    for (i = 0; i < m; i++) {
+		tmp = 0.0;
+		for (j = 0; j < p; j++)
+		    tmp += sFF[i + j * m] * a[j];
+		f[i] = tmp;
+	    }
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx_prior[i];
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sFF[j + l * m] * Ux_prior[l + i * p];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < m; i++) 
+		for (j = 0; j < m; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
+        
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &m, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < m; i++) {
+		for (j = 0; j < m; j++)
+		    Uy[i + j * m] = la_vt[j + i * max_m_p];
+		Dy[i] = la_s[i];
+	    }
+        
+	    /** Posterior **/
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < m; k++)
+			tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
+		    tmpMat2[i + j * m] = tmp;
+		}
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = 1 / Dx_prior[i];
+		tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		for (j = i + 1; j < p; j++) 
+		    tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
+	    }
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+		    Ux[i + j * p] = tmp;
+		}
+		tmp = 1 / la_s[i];
+		Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
+	    }
+	    for (i = 0; i < m; i++)
+		e[i] = sy[t + i * n] - f[i];
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_Vinv[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+		    tmpMat2[j + i * m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = a[i];
+		for (j = 0; j < m; j++)
+		    tmp += tmpMat2[j + i * m] * e[j];
+		sm0[i] = tmp;
+	    }
+
+	    /** Update negative log likelihood **/
+	    for (i = 0; i < m; i++) {
+		tmp =0.0;
+		for (j = 0; j < m; j++)
+		    tmp += Uy[j + i * m] * e[j];
+		ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
+	    }
+	} else {
+	    if (numNA == m) { /** all missing **/
+
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sGG[i + j * p] * sm0[j];
+		    tmpMat2[i] = tmp;
+		}
+		for (i = 0; i < p; i++)
+		    sm0[i] = tmpMat2[i];
+		
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k];
+		    a[i] = tmp;
+		}
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+		    
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx[i] = la_s[i];
+		}
+
+	    } else { /** some missing **/
+
+		numGood = m - numNA;
+		for (i = j = k = 0; i < m; i++) 
+		    if (k + 1 <= numNA && whereNA[k] == i) 
+			k++;
+		    else
+			good[j++] = i;
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) 
+			tmpMat[i + la_m * j] = tmpMat[j + la_m * i] = 
+			    REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]]; /* V */
+		    tmpMat[i + la_m * j] = REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]];
+		}
+		F77_CALL(dgesdd)(&la_jobz,
+				 &numGood, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    tmp = sqrt( la_s[i] );
+		    tmp1 = 1 / tmp;
+		    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
+		    for (j = 0; j < numGood; j++) {
+			sqrtVTMP[i + j * m] = tmp * la_vt[i + j * max_m_p]; 
+			sqrtVinvTMP[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
+		    }
+		}
+
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[k + i * m] * sqrtVinvTMP[k + j * m];
+			tmpMat[i + j * la_m] = tmpMat[j + i * la_m] = tmp;
+		    }
+		    tmp = 0.0;
+		    for (k = 0; k < numGood; k++)
+			tmp += SQR( sqrtVinvTMP[k + i * m] );
+		    tmpMat[i + i * la_m] = tmp;
+		}
+		for (i = 0; i < p ; i++) 
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sFF[good[k] + i * m] * tmpMat[k + j * la_m];
+			tF_VinvTMP[i + j * p] = tmp;
+		    }
+
+		/** Prior **/
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k];
+		    a[i] = tmp;
+		}
+		
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx_prior[i] = la_s[i];
+		}
+
+		/** One-step forecast **/
+		for (i = 0; i < numGood; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sFF[good[i] + j * m] * a[j];
+		    f[i] = tmp;
+		}
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx_prior[i];
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sFF[good[j] + l * m] * Ux_prior[l + i * p];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < numGood; i++) 
+		    for (j = 0; j < numGood; j++) 
+			tmpMat[i + p + j * la_m] = sqrtVTMP[i + j * m];
+
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < numGood; j++)
+			Uy[i + j * m] = la_vt[j + i * max_m_p];
+		    Dy[i] = la_s[i];
+		}
+
+		/** Posterior **/
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[i + k * m] * sFF[good[k] + j * m];
+			tmpMat2[i + j * m] = tmp;
+		    }
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = 1 / Dx_prior[i];
+		    tmpMat[i + numGood + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		    for (j = i + 1; j < p; j++) 
+			tmpMat[j + numGood + i * la_m] = tmpMat[i + numGood + j * la_m] = 0.0;
+		}
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+			Ux[i + j * p] = tmp;
+		    }
+		    tmp = 1 / la_s[i];
+		    Dx[i] = R_FINITE(tmp) ? tmp : 0.0;
+		}
+		for (i = 0; i < numGood; i++)
+		    e[i] = sy[t + good[i] * n] - f[i];
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += SQR(Dx[i]) * Ux[k + i * p] * tF_VinvTMP[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+			tmpMat2[j + i * m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = a[i];
+		    for (j = 0; j < numGood; j++)
+   			tmp += tmpMat2[j + i * m] * e[j];
+		    sm0[i] = tmp;
+		}
+		
+		/** Update negative log likelihood **/
+		for (i = 0; i < numGood; i++) {
+		    tmp =0.0;
+		    for (j = 0; j < numGood; j++)
+			tmp += Uy[j + i * m] * e[j];
+		    ll += SQR( tmp / Dy[i] ) + 2.0 * log( Dy[i] );
+		}
+	    }
+	}
     }
 
     REAL(val)[0] = 0.5 * ll;
@@ -766,14 +1259,16 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 /***** components of the list 'mod', not on their names. *****/     
 
     SEXP val, mR, UxR, DxR, aR, Ux_priorR, Dx_priorR, fR;
-    int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork;
+    int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
+	numNA, *whereNA, numGood, *good;
     int stvFF=INTEGER(tvFF)[0], stvV=INTEGER(tvV)[0], stvGG=INTEGER(tvGG)[0], 
 	stvW=INTEGER(tvW)[0], stvFV, *sJFF, *sJV, *sJGG, *sJW, nrJFF, nrJV, nrJGG, nrJW;
     double *sy=REAL(y), *sm0, *sFF, *sV, *sGG, *sW, *sX, *Ux,  
         *Dx, *sqrtV, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv;
-    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work;
+    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
+	*sqrtVinvTMP, *tF_VinvTMP;
     char la_jobz='S';
 
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
@@ -811,6 +1306,15 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
     Dy = (double *) R_alloc( m, sizeof(double) ); 
     e = (double *) R_alloc( m, sizeof(double) );
     tmpMat2 = (double *) R_alloc( m * p, sizeof(double) );
+
+    /* space needed to deal with missing values */
+    whereNA = (int *) R_alloc( m, sizeof(int) );
+    if (m > 1){
+	good = (int *) R_alloc( m, sizeof(int) );
+	sqrtVinvTMP = (double *) R_alloc( m * m, sizeof(double) );
+	tF_VinvTMP = (double *) R_alloc( p * m, sizeof(double) );
+    }
+
     /* allocate space for a la_m by la_n matrix */
     tmpMat = (double *) R_alloc( la_m * la_n, sizeof(double) ); 
     /* space for singular values */
@@ -1020,140 +1524,344 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 		    tF_Vinv[i + j * p] = tmp;
 		}
 	}
-        /** Prior **/
-        for (i = 0; i < p; i++) {
-            tmp = 0.0;
-            for (k = 0; k < p; k++)
-                tmp += sGG[i + p * k] * sm0[k * nPlus];
-            a[i * n] = tmp;
-        }
-        
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx[i * nPlus];
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sGG[j + l * p] * Ux[i * p + l];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-        }
-        for (i = 0; i < p; i++) 
-            for (j = 0; j < p; j++) 
-                tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
-        l = 2 * p;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++)
-                Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
-            Dx_prior[i * n] = la_s[i];
-        }
-
-        /** One-step forecast **/
-        for (i = 0; i < m; i++) {
-            tmp = 0.0;
-            for (j = 0; j < p; j++)
-                tmp += sFF[i + j * m] * a[j * n];
-            f[i * n] = tmp;
-        }
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx_prior[i * n];
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sFF[j + l * m] * Ux_prior[l + i * p];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-        }
-        for (i = 0; i < m; i++) 
-            for (j = 0; j < m; j++) 
-                tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
-        
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &m, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < m; i++) {
-            for (j = 0; j < m; j++)
-                Uy[i + j * m] = la_vt[j + i * max_m_p];
-            Dy[i] = la_s[i];
-        }
-        
-        /** Posterior **/
-        sm0++; Dx++;
-	Ux = REAL(VECTOR_ELT(UxR, t+1));
+	/** check for missing values **/
+	numNA = 0;
 	for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < m; k++)
-                    tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
-                tmpMat2[i + j * m] = tmp;
-            }
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = 1 / Dx_prior[i * n];
-            tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
-            for (j = i + 1; j < p; j++) 
-                tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
-        }
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
-                Ux[i + j * p] = tmp;
-            }
-            tmp = 1 / la_s[i];
-            Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
-        }
-        for (i = 0; i < m; i++)
-            e[i] = sy[i * n] - f[i * n];
-	for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_Vinv[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
-                tmpMat2[j + i * m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = a[i * n];
-            for (j = 0; j < m; j++)
-                tmp += tmpMat2[j + i * m] * e[j];
-            sm0[i * nPlus] = tmp;
-        }
+	    if (ISNA(sy[i * n]))  
+		whereNA[numNA++] = i; 
+	
+	if (numNA == 0) { /** no missing values **/
 
-	/** increment pointers **/
-	sy++; a++; Dx_prior++, f++;
+	    /** Prior **/
+	    for (i = 0; i < p; i++) {
+		tmp = 0.0;
+		for (k = 0; k < p; k++)
+		    tmp += sGG[i + p * k] * sm0[k * nPlus];
+		a[i * n] = tmp;
+	    }
+        
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx[i * nPlus];
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sGG[j + l * p] * Ux[i * p + l];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < p; i++) 
+		for (j = 0; j < p; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+	    l = 2 * p;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++)
+		    Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		Dx_prior[i * n] = la_s[i];
+	    }
+
+	    /** One-step forecast **/
+	    for (i = 0; i < m; i++) {
+		tmp = 0.0;
+		for (j = 0; j < p; j++)
+		    tmp += sFF[i + j * m] * a[j * n];
+		f[i * n] = tmp;
+	    }
+
+	    /** Posterior **/
+	    sm0++; Dx++;
+	    Ux = REAL(VECTOR_ELT(UxR, t+1));
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < m; k++)
+			tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
+		    tmpMat2[i + j * m] = tmp;
+		}
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = 1 / Dx_prior[i * n];
+		tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		for (j = i + 1; j < p; j++) 
+		    tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
+	    }
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+		    Ux[i + j * p] = tmp;
+		}
+		tmp = 1 / la_s[i];
+		Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
+	    }
+	    for (i = 0; i < m; i++)
+		e[i] = sy[i * n] - f[i * n];
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_Vinv[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+		    tmpMat2[j + i * m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = a[i * n];
+		for (j = 0; j < m; j++)
+		    tmp += tmpMat2[j + i * m] * e[j];
+		sm0[i * nPlus] = tmp;
+	    }
+
+	    /** increment pointers **/
+	    sy++; a++; Dx_prior++, f++;
+
+	} else { 
+	    if (numNA == m) { /* all missing */
+
+		/** Prior **/
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k * nPlus];
+		    a[i * n] = tmp;
+		}
+        
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i * nPlus];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx_prior[i * n] = la_s[i];
+		}
+
+		/** Posterior - same as prior **/
+		sm0++; Dx++;
+		Ux = REAL(VECTOR_ELT(UxR, t+1));
+		for (i = 0; i < p; i++) {
+		    sm0[i * nPlus] = a[i * n];
+		    Dx[i * nPlus] = Dx_prior[i * n];
+		    for (j = 0; j < p; j++)
+			Ux[i + j * p] = Ux_prior[i + j * p];
+		}
+
+		/** One-step forecast **/
+		for (i = 0; i < m; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sFF[i + j * m] * a[j * n];
+		    f[i * n] = tmp;
+		}
+
+		/** increment pointers **/
+		sy++; a++; Dx_prior++, f++;
+
+	    } else { /* some missing */
+
+		numGood = m - numNA;
+		for (i = j = k = 0; i < m; i++) 
+		    if (k + 1 <= numNA && whereNA[k] == i) 
+			k++;
+		    else
+			good[j++] = i;
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) 
+			tmpMat[i + la_m * j] = tmpMat[j + la_m * i] = 
+			    REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]]; /* V */
+		    tmpMat[i + la_m * j] = REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]];
+		}
+		F77_CALL(dgesdd)(&la_jobz,
+				 &numGood, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    tmp = sqrt( la_s[i] );
+		    tmp1 = 1 / tmp;
+		    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
+		    for (j = 0; j < numGood; j++) 
+			sqrtVinvTMP[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
+		    
+		}
+
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[k + i * m] * sqrtVinvTMP[k + j * m];
+			tmpMat[i + j * la_m] = tmpMat[j + i * la_m] = tmp;
+		    }
+		    tmp = 0.0;
+		    for (k = 0; k < numGood; k++)
+			tmp += SQR( sqrtVinvTMP[k + i * m] );
+		    tmpMat[i + i * la_m] = tmp;
+		}
+		for (i = 0; i < p ; i++) 
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sFF[good[k] + i * m] * tmpMat[k + j * la_m];
+			tF_VinvTMP[i + j * p] = tmp;
+		    }
+
+		/** Prior **/
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k * nPlus];
+		    a[i * n] = tmp;
+		}
+
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i * nPlus];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx_prior[i * n] = la_s[i];
+		}
+
+		/** One-step forecast **/
+		for (i = 0; i < m; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sFF[i + j * m] * a[j * n];
+		    f[i * n] = tmp;
+		}
+
+		/** Posterior **/
+		sm0++; Dx++;
+		Ux = REAL(VECTOR_ELT(UxR, t+1));
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[i + k * m] * sFF[good[k] + j * m];
+			tmpMat2[i + j * m] = tmp;
+		    }
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = 1 / Dx_prior[i * n];
+		    tmpMat[i + numGood + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		    for (j = i + 1; j < p; j++) 
+			tmpMat[j + numGood + i * la_m] = tmpMat[i + numGood + j * la_m] = 0.0;
+		}
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+			Ux[i + j * p] = tmp;
+		    }
+		    tmp = 1 / la_s[i];
+		    Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
+		}
+		for (i = 0; i < numGood; i++)
+		    e[i] = sy[good[i] * n] - f[good[i] * n];
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_VinvTMP[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+			tmpMat2[j + i * m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = a[i * n];
+		    for (j = 0; j < numGood; j++)
+			tmp += tmpMat2[j + i * m] * e[j];
+		    sm0[i * nPlus] = tmp;
+		}
+
+		/** increment pointers **/
+		sy++; a++; Dx_prior++, f++;
+	    }
+	}
     }
 
     PROTECT(val = allocVector(VECSXP, 7));
@@ -1175,12 +1883,14 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
 /***** components of the list 'mod', not on their names. *****/     
 
     SEXP val, mR, UxR, DxR, aR, Ux_priorR, Dx_priorR, fR;
-    int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork;
+    int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
+	numNA, *whereNA, numGood, *good;
     double *sy=REAL(y), *sm0, *sFF, *sGG, *Ux,  
-        *Dx, *sqrtV, *sqrtW, 
+        *Dx, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv;
-    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work;
+    double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
+	*sqrtVinvTMP, *tF_VinvTMP;
     char la_jobz='S';
 
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
@@ -1208,7 +1918,6 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
     Dx_prior = REAL(Dx_priorR);
     sFF = REAL(VECTOR_ELT(mod,2));
     sGG = REAL(VECTOR_ELT(mod,4));
-    sqrtV = (double *) R_alloc( m * m, sizeof(double) );
     sqrtVinv = (double *) R_alloc( m * m, sizeof(double) );
     sqrtW = (double *) R_alloc( p * p, sizeof(double) );
     tF_Vinv = (double *) R_alloc( p * m, sizeof(double) );
@@ -1216,6 +1925,14 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
     Dy = (double *) R_alloc( m, sizeof(double) ); 
     e = (double *) R_alloc( m, sizeof(double) );
     tmpMat2 = (double *) R_alloc( m * p, sizeof(double) );
+
+    /* space needed to deal with missing values */
+    whereNA = (int *) R_alloc( m, sizeof(int) );
+    if (m > 1){
+	good = (int *) R_alloc( m, sizeof(int) );
+	sqrtVinvTMP = (double *) R_alloc( m * m, sizeof(double) );
+	tF_VinvTMP = (double *) R_alloc( p * m, sizeof(double) );
+    }
 
     /* allocate space for a la_m by la_n matrix */
     tmpMat = (double *) R_alloc( la_m * la_n, sizeof(double) ); 
@@ -1293,10 +2010,8 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
         tmp = sqrt( la_s[i] );
         tmp1 = 1 / tmp;
         tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
-        for (j = 0; j<m; j++) {
-            sqrtV[i + j * m] = tmp * la_vt[i + j * max_m_p];
+        for (j = 0; j<m; j++) 
             sqrtVinv[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
-        }
     }
     for (i = 0; i < m; i++) {
         for (j = 0; j < i; j++) {
@@ -1324,144 +2039,345 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
 	SET_VECTOR_ELT(Ux_priorR, t, allocMatrix(REALSXP, p, p));
 	Ux_prior = REAL(VECTOR_ELT(Ux_priorR, t));
 	SET_VECTOR_ELT(UxR, t+1, allocMatrix(REALSXP, p, p));
-        /** Prior **/
-        for (i = 0; i < p; i++) {
-            tmp = 0.0;
-            for (k = 0; k < p; k++)
-                tmp += sGG[i + p * k] * sm0[k * nPlus];
-            a[i * n] = tmp;
-        }
-        
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx[i * nPlus];
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sGG[j + l * p] * Ux[i * p + l];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < p; i++) 
-            for (j = 0; j < p; j++) 
-                tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
-        l = 2 * p;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++)
-                Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
-            Dx_prior[i * n] = la_s[i];
-        }
 
-        /** One-step forecast **/
-        for (i = 0; i < m; i++) {
-            tmp = 0.0;
-            for (j = 0; j < p; j++)
-                tmp += sFF[i + j * m] * a[j * n];
-            f[i * n] = tmp;
-        }
-        for (i = 0; i < p; i++) {
-            tmp1 = Dx_prior[i * n];
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (l = 0; l < p; l++)
-                    tmp += sFF[j + l * m] * Ux_prior[l + i * p];
-                tmpMat[i + j * la_m] = tmp * tmp1;
-            }
-            
-        }
-        for (i = 0; i < m; i++) 
-            for (j = 0; j < m; j++) 
-                tmpMat[i + p + j * la_m] = sqrtV[i + j * m];
-        
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &m, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < m; i++) {
-            for (j = 0; j < m; j++)
-                Uy[i + j * m] = la_vt[j + i * max_m_p];
-            Dy[i] = la_s[i];
-        }
-        
-        /** Posterior **/
-        sm0++; Dx++;
-	Ux = REAL(VECTOR_ELT(UxR, t+1));
+	/** check for missing values **/
+	numNA = 0;
 	for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < m; k++)
-                    tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
-                tmpMat2[i + j * m] = tmp;
-            }
-        for (i = 0; i < m; i++)
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = 1 / Dx_prior[i * n];
-            tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
-            for (j = i + 1; j < p; j++) 
-                tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
-        }
-        l = p + m;
-        F77_CALL(dgesdd)(&la_jobz,
-                         &l, &p, tmpMat, &la_m, la_s,
-                         la_u, &la_m,
-                         la_vt, &max_m_p,
-                         la_work, &la_lwork, la_iwork, &la_info);
-        if (la_info != 0)
-            error("error code %d from Lapack routine dgesdd", la_info);
-        for (i = 0; i < p; i++) {
-            for (j = 0; j < p; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
-                Ux[i + j * p] = tmp;
-            }
-            tmp = 1 / la_s[i];
-            Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
-        }
-        for (i = 0; i < m; i++)
-            e[i] = sy[i * n] - f[i * n];
-	for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_Vinv[k + j * p];
-                tmpMat[i + j * la_m] = tmp;
-            }
-        for (i = 0; i < p; i++)
-            for (j = 0; j < m; j++) {
-                tmp = 0.0;
-                for (k = 0; k < p; k++)
-                    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
-                tmpMat2[j + i * m] = tmp;
-            }
-        for (i = 0; i < p; i++) {
-            tmp = a[i * n];
-            for (j = 0; j < m; j++)
-                tmp += tmpMat2[j + i * m] * e[j];
-            sm0[i * nPlus] = tmp;
-        }
-/*          pmatrix("Ux",Ux,p,p,p); pmatrix("Dx",Dx, 1,1,p);  */
-/*          pmatrix("m0",sm0,1,1,p); error(""); */
+	    if (ISNA(sy[i * n]))  
+		whereNA[numNA++] = i; 
+	
+	if (numNA == 0) { /** no missing values **/
 
-	/** increment pointers **/
-	sy++; a++; Dx_prior++, f++;
+	    /** Prior **/
+	    for (i = 0; i < p; i++) {
+		tmp = 0.0;
+		for (k = 0; k < p; k++)
+		    tmp += sGG[i + p * k] * sm0[k * nPlus];
+		a[i * n] = tmp;
+	    }
+        
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx[i * nPlus];
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sGG[j + l * p] * Ux[i * p + l];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < p; i++) 
+		for (j = 0; j < p; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+	    l = 2 * p;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++)
+		    Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		Dx_prior[i * n] = la_s[i];
+	    }
+
+	    /** One-step forecast **/
+	    for (i = 0; i < m; i++) {
+		tmp = 0.0;
+		for (j = 0; j < p; j++)
+		    tmp += sFF[i + j * m] * a[j * n];
+		f[i * n] = tmp;
+	    }
+
+	    /** Posterior **/
+	    sm0++; Dx++;
+	    Ux = REAL(VECTOR_ELT(UxR, t+1));
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < m; k++)
+			tmp += sqrtVinv[i + k * m] * sFF[k + j * m];
+		    tmpMat2[i + j * m] = tmp;
+		}
+	    for (i = 0; i < m; i++)
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = 1 / Dx_prior[i * n];
+		tmpMat[i + m + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		for (j = i + 1; j < p; j++) 
+		    tmpMat[j + m + i * la_m] = tmpMat[i + m + j * la_m] = 0.0;
+	    }
+	    l = p + m;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+		    Ux[i + j * p] = tmp;
+		}
+		tmp = 1 / la_s[i];
+		Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
+	    }
+	    for (i = 0; i < m; i++)
+		e[i] = sy[i * n] - f[i * n];
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_Vinv[k + j * p];
+		    tmpMat[i + j * la_m] = tmp;
+		}
+	    for (i = 0; i < p; i++)
+		for (j = 0; j < m; j++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+		    tmpMat2[j + i * m] = tmp;
+		}
+	    for (i = 0; i < p; i++) {
+		tmp = a[i * n];
+		for (j = 0; j < m; j++)
+		    tmp += tmpMat2[j + i * m] * e[j];
+		sm0[i * nPlus] = tmp;
+	    }
+
+	    /** increment pointers **/
+	    sy++; a++; Dx_prior++, f++;
+
+	} else { 
+	    if (numNA == m) { /* all missing */
+
+	    /** Prior **/
+	    for (i = 0; i < p; i++) {
+		tmp = 0.0;
+		for (k = 0; k < p; k++)
+		    tmp += sGG[i + p * k] * sm0[k * nPlus];
+		a[i * n] = tmp;
+	    }
+        
+	    for (i = 0; i < p; i++) {
+		tmp1 = Dx[i * nPlus];
+		for (j = 0; j < p; j++) {
+		    tmp = 0.0;
+		    for (l = 0; l < p; l++)
+			tmp += sGG[j + l * p] * Ux[i * p + l];
+		    tmpMat[i + j * la_m] = tmp * tmp1;
+		}
+            
+	    }
+	    for (i = 0; i < p; i++) 
+		for (j = 0; j < p; j++) 
+		    tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+	    l = 2 * p;
+	    F77_CALL(dgesdd)(&la_jobz,
+			     &l, &p, tmpMat, &la_m, la_s,
+			     la_u, &la_m,
+			     la_vt, &max_m_p,
+			     la_work, &la_lwork, la_iwork, &la_info);
+	    if (la_info != 0)
+		error("error code %d from Lapack routine dgesdd", la_info);
+	    for (i = 0; i < p; i++) {
+		for (j = 0; j < p; j++)
+		    Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		Dx_prior[i * n] = la_s[i];
+	    }
+
+	    /** Posterior - same as prior **/
+	    sm0++; Dx++;
+	    Ux = REAL(VECTOR_ELT(UxR, t+1));
+	    for (i = 0; i < p; i++) {
+		sm0[i * nPlus] = a[i * n];
+		Dx[i * nPlus] = Dx_prior[i * n];
+		for (j = 0; j < p; j++)
+		    Ux[i + j * p] = Ux_prior[i + j * p];
+	    }
+
+	    /** One-step forecast **/
+	    for (i = 0; i < m; i++) {
+		tmp = 0.0;
+		for (j = 0; j < p; j++)
+		    tmp += sFF[i + j * m] * a[j * n];
+		f[i * n] = tmp;
+	    }
+
+	    /** increment pointers **/
+	    sy++; a++; Dx_prior++, f++;
+
+	    } else { /* some missing */
+
+		numGood = m - numNA;
+		for (i = j = k = 0; i < m; i++) 
+		    if (k + 1 <= numNA && whereNA[k] == i) 
+			k++;
+		    else
+			good[j++] = i;
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) 
+			tmpMat[i + la_m * j] = tmpMat[j + la_m * i] = 
+			    REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]]; /* V */
+		    tmpMat[i + la_m * j] = REAL(VECTOR_ELT(mod,3))[good[i] + m * good[j]];
+		}
+		F77_CALL(dgesdd)(&la_jobz,
+				 &numGood, &numGood, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < numGood; i++) {
+		    tmp = sqrt( la_s[i] );
+		    tmp1 = 1 / tmp;
+		    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
+		    for (j = 0; j < numGood; j++) 
+			sqrtVinvTMP[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
+		    
+		}
+
+		for (i = 0; i < numGood; i++) {
+		    for (j = 0; j < i; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[k + i * m] * sqrtVinvTMP[k + j * m];
+			tmpMat[i + j * la_m] = tmpMat[j + i * la_m] = tmp;
+		    }
+		    tmp = 0.0;
+		    for (k = 0; k < numGood; k++)
+			tmp += SQR( sqrtVinvTMP[k + i * m] );
+		    tmpMat[i + i * la_m] = tmp;
+		}
+		for (i = 0; i < p ; i++) 
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sFF[good[k] + i * m] * tmpMat[k + j * la_m];
+			tF_VinvTMP[i + j * p] = tmp;
+		    }
+
+		/** Prior **/
+		for (i = 0; i < p; i++) {
+		    tmp = 0.0;
+		    for (k = 0; k < p; k++)
+			tmp += sGG[i + p * k] * sm0[k * nPlus];
+		    a[i * n] = tmp;
+		}
+
+		for (i = 0; i < p; i++) {
+		    tmp1 = Dx[i * nPlus];
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (l = 0; l < p; l++)
+			    tmp += sGG[j + l * p] * Ux[i * p + l];
+			tmpMat[i + j * la_m] = tmp * tmp1;
+		    }
+            
+		}
+		for (i = 0; i < p; i++) 
+		    for (j = 0; j < p; j++) 
+			tmpMat[i + p + j * la_m] = sqrtW[i + j * p];
+		l = 2 * p;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++)
+			Ux_prior[i + j * p] = la_vt[j + i * max_m_p];
+		    Dx_prior[i * n] = la_s[i];
+		}
+
+		/** One-step forecast **/
+		for (i = 0; i < m; i++) {
+		    tmp = 0.0;
+		    for (j = 0; j < p; j++)
+			tmp += sFF[i + j * m] * a[j * n];
+		    f[i * n] = tmp;
+		}
+
+		/** Posterior **/
+		sm0++; Dx++;
+		Ux = REAL(VECTOR_ELT(UxR, t+1));
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < numGood; k++)
+			    tmp += sqrtVinvTMP[i + k * m] * sFF[good[k] + j * m];
+			tmpMat2[i + j * m] = tmp;
+		    }
+		for (i = 0; i < numGood; i++)
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += tmpMat2[i + k * m] * Ux_prior[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = 1 / Dx_prior[i * n];
+		    tmpMat[i + numGood + i * la_m] = R_FINITE(tmp) ? tmp : 0.0;
+		    for (j = i + 1; j < p; j++) 
+			tmpMat[j + numGood + i * la_m] = tmpMat[i + numGood + j * la_m] = 0.0;
+		}
+		l = p + numGood;
+		F77_CALL(dgesdd)(&la_jobz,
+				 &l, &p, tmpMat, &la_m, la_s,
+				 la_u, &la_m,
+				 la_vt, &max_m_p,
+				 la_work, &la_lwork, la_iwork, &la_info);
+		if (la_info != 0)
+		    error("error code %d from Lapack routine dgesdd", la_info);
+		for (i = 0; i < p; i++) {
+		    for (j = 0; j < p; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux_prior[i + k * p] * la_vt[j + k * max_m_p];
+			Ux[i + j * p] = tmp;
+		    }
+		    tmp = 1 / la_s[i];
+		    Dx[i * nPlus] = R_FINITE(tmp) ? tmp : 0.0;
+		}
+		for (i = 0; i < numGood; i++)
+		    e[i] = sy[good[i] * n] - f[good[i] * n];
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += SQR(Dx[i * nPlus]) * Ux[k + i * p] * tF_VinvTMP[k + j * p];
+			tmpMat[i + j * la_m] = tmp;
+		    }
+		for (i = 0; i < p; i++)
+		    for (j = 0; j < numGood; j++) {
+			tmp = 0.0;
+			for (k = 0; k < p; k++)
+			    tmp += Ux[i + k * p] * tmpMat[k + j * la_m];
+			tmpMat2[j + i * m] = tmp;
+		    }
+		for (i = 0; i < p; i++) {
+		    tmp = a[i * n];
+		    for (j = 0; j < numGood; j++)
+			tmp += tmpMat2[j + i * m] * e[j];
+		    sm0[i * nPlus] = tmp;
+		}
+
+		/** increment pointers **/
+		sy++; a++; Dx_prior++, f++;
+	    }
+	}
     }
 
     PROTECT(val = allocVector(VECSXP, 7));

@@ -14,21 +14,23 @@ dlmFilter(y, mod, debug = FALSE, simplify = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y}{The data. \code{y} can be a vector, a matrix, a univariate or
+  \item{y}{the data. \code{y} can be a vector, a matrix, a univariate or
     multivariate time series.}
-  \item{mod}{An object of class \code{dlm}, or a list with components
+  \item{mod}{an object of class \code{dlm}, or a list with components
     \code{m0}, \code{C0}, 
     \code{FF}, \code{V}, \code{GG}, \code{W}, and optionally \code{JFF},
     \code{JV}, \code{JGG}, \code{JW}, and \code{X}, defining the model
     and the parameters of the prior distribution.}
-  \item{debug}{If \code{FALSE}, faster C code will be used, otherwise
+  \item{debug}{if \code{FALSE}, faster C code will be used, otherwise
     all the computations will be performed in R.}
-  \item{simplify}{See value below.}
+  \item{simplify}{should the data be included in the output?}
 }
 \details{%
     The calculations are based on the singular value decomposition (SVD)
     of the relevant matrices. Variance matrices are returned in terms of
     their SVD.
+
+    Missing values are allowed in \code{y}.
 }
 \value{%
   A list with the components described below. If \code{simplify} is 
@@ -56,7 +58,7 @@ dlmFilter(y, mod, debug = FALSE, simplify = FALSE)
 \references{Zhang, Y. and Li, X.R., Fixed-interval smoothing algorithm
   based on singular value decomposition, \emph{Proceedings of the 1996
     IEEE International Conference on Control Applications}.}
-\author{Giovanni Petris, \email{<GPetris@uark.edu>}}
+\author{Giovanni Petris, \email{GPetris@uark.edu}}
 
 \seealso{See \code{\link{dlm}} for a description of dlm objects,
   \code{\link{dlmSvd2var}} to obtain a variance matrix from its SVD,
@@ -71,7 +73,8 @@ nileBuild <- function(par) {
 }
 nileMLE <- dlmMLE(Nile, rep(0,2), nileBuild); nileMLE$conv
 nileMod <- nileBuild(nileMLE$par)
-unlist(nileMod[c("V","W")])
+V(nileMod)
+W(nileMod)
 nileFilt <- dlmFilter(Nile, nileMod)
 nileSmooth <- dlmSmooth(nileFilt)
 plot(cbind(Nile, nileFilt$m[-1], nileSmooth$s[-1]), plot.type='s',

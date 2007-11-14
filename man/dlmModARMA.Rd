@@ -11,22 +11,24 @@ dlmModARMA(ar = NULL, ma = NULL, sigma2 = 1, m0, C0, dV)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{ar}{A vector or a list of matrices (in the multivariate case)
+  \item{ar}{a vector or a list of matrices (in the multivariate case)
     containing the autoregressive coefficients.}
-  \item{ma}{A vector or a list of matrices (in the multivariate case)
+  \item{ma}{a vector or a list of matrices (in the multivariate case)
     containing the moving average coefficients.}
-  \item{sigma2}{The variance (or variance matrix) of the innovations.}
-  \item{m0}{Returned as \code{m0} in the created dlm object. It defaults
+  \item{sigma2}{the variance (or variance matrix) of the innovations.}
+  \item{m0}{returned as \code{m0} in the created dlm object. It defaults
     to a vector of zeroes.}
-  \item{C0}{Returned as \code{C0} in the created dlm object. It defaults
+  \item{C0}{returned as \code{C0} in the created dlm object. It defaults
     to a \code{1e7 * diag(k)}, where \code{k} is the dimension of the
     state vector in the DLM representation of the specified ARMA model.}
-  \item{dV}{The variance, or the diagonal elements of the variance
+  \item{dV}{the variance, or the diagonal elements of the variance
     matrix, of the observational noise. \code{V} is assumed to be
     diagonal and it defaults to zero.}
 }
 \details{
-  What is the name of this representation???
+  The returned DLM only gives one of the many possible representations
+  of an ARMA process. 
+%  What is the name of this representation???
 }
 \value{
   The function returns an object of class dlm representing the ARMA

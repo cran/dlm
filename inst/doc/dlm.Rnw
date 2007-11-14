@@ -1,0 +1,891 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+%\VignetteIndexEntry{dlm: MLE and Bayesian analysis of Dynamic Linear Models}
+%\VignettePackage{dlm}
+%\VignetteKeyword{State space models}
+%\VignetteKeyword{Kalman filter}
+%\VignetteKeyword{Bayesian analysis}
+
+\SweaveOpts{keep.source=TRUE, width=10, height=6}
+\newcommand{\Y}{\mathord{\mathcal{Y}}}
+\newcommand{\tr}{\mathop{\mathrm{tr}}}
+\newcommand{\rlan}{\texttt{R}}
+\newcommand{\dlm}{\texttt{dlm}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\dlm{}: an \rlan{}  package for Bayesian analysis of Dynamic Linear Models} 
+\author{Giovanni Petris\\
+{\small University of Arkansas, Fayetteville AR}}
+\date{2007-11-14}
+
+\begin{document}
+\setkeys{Gin}{width=0.9\textwidth}
+
+\maketitle
+
+<<echo=false, results=hide>>=
+options(digits=3)
+library(dlm)
+set.seed(1963)
+@
+
+\section{Defining and manipulating Dynamic Linear Models}
+Package \dlm{} focuses on Bayesian analyisis of Dynamic Linear Models (DLMs),
+also known as linear state space models (see \cite{Harvey:1989,
+  West+Harrison:1997}. The package also includes functions for maximum
+likelihood estimation of the parameters of a DLM and for Kalman filtering. The
+algorithms used for Kalman filtering, likelihood evaluation, and sampling from
+the state vectors are based on the singular value decomposition (SVD) of the
+relevant variance matrices (see \cite{Zhang+Li:1996}), which improves
+numerical stability over other algorithms.  \bigskip
+
+\subsection{The model}
+A DLM is specified by the following equations:
+$$\left\{ 
+  \begin{aligned}
+    y_t &= F_t\theta_t + v_t, & v_t&\sim \mathcal{N}(0,V_t)\\
+    \theta_t &= G_t\theta_{t-1} + w_t, & w_t&\sim \mathcal{N}(0,W_t)
+  \end{aligned}\right.
+$$
+for $t=1,\dots, n$, together with a \emph{prior} distribution for $\theta_0$: 
+$$ \theta_0\sim \mathcal{N}(m_0, C_0).$$
+Here $y_t$ is an $m$-dimensional vector, representing the observation at time
+$t$, while $\theta_t$ is a generally unobservable $p$-dimensional vector
+representing the state of the system at time $t$. The $v_t$'s are observation
+errors and the $w_t$'s evolution errors. The matrices $F_t$ and $G_t$ have
+dimension $m$ by $p$ and $p$ by $p$, respectively, while $V_t$ and $W_t$ are
+variance matrices of the appropriate dimension. 
+
+\subsection{Defining DLMs with \dlm{}}
+One of the simplest DLMs is the random walk plus noise model, also called
+first order polynomial model. It is used to model univariate observations,
+the state vector is unidimensional, and it is described by the equations
+$$\left\{ 
+  \begin{aligned}
+    y_t &= \theta_t + v_t, & v_t&\sim \mathcal{N}(0,V)\\
+    \theta_t &= \theta_{t-1} + w_t, & w_t&\sim \mathcal{N}(0,W)
+  \end{aligned}\right.
+$$
+The model is \emph{constant}, i.e., the various matrices defining its
+dynamics are time-invariant. Moreover, $F_t = G_t = [1]$. The only parameters
+of the model are the observation and evolution variances $V$ and $W$. These
+are usually estimated from available data using maximum likelihood or Bayesian
+techniques. In package \dlm{} a constant DLM is represented as a list with
+components \code{FF, V, GG, W}, having class \code{"dlm"}. A random walk plus
+noise model, with $V = 0.8$ and $W = 0.1$, can be defined in R as follows:
+
+<<results = hide>>=
+dlm(FF = 1, V = 0.8, GG = 1, W = 0.1, m0 = 0, C0 = 100)
+@ 
+
+Note that the mean and variance of the prior distribution of $\theta_0$ must
+be specified, as they are an integral part of the model definition. An
+alternative way to define the same models is 
+
+<<results = hide>>=
+dlmModPoly(1, dV = 0.8, dW = 0.1, C0 = 100)
+@ 
+
+This function has default values for \code{m0, C0, dV} and \code{dW} (the
+last two are used to specify the \emph{diagonal} of $V$ and $W$,
+respectively). In fact it also has a default value for the \emph{order} of the
+polynomial model, so the user must be aware of these defaults before using
+them light-heartedly. In particular, the default value for \code{dV} and
+\code{dW} should be more correctly thought as place holders that are there
+just to allow a complete specification of the model. 
+
+Consider the second-order polynomial model obtained as
+
+<<>>=
+myMod <- dlmModPoly()
+@ 
+
+Individual components of the model can be accessed and modified in a natural
+way by using the exctractor and replacement functions provided by the
+package.
+
+<<>>= 
+FF(myMod)
+W(myMod)
+m0(myMod)
+V(myMod) <- 0.8
+@ 
+
+In addition to \code{dlmModPoly}, \dlm{} provides other functions to create
+DLMs of standard types. They are summarized in Table~\ref{tab:dlmMod}. 
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|l|l|}
+    \hline
+    \multicolumn{1}{|c}{Function} & \multicolumn{1}{|c|}{Model}\\
+    \hline\hline
+    \code{dlmModARMA}&              ARMA process\\
+    \code{dlmModPoly}&              $n$th order polynomial DLM\\
+    \code{dlmModReg}&               Linear regression\\
+    \code{dlmModSeas}&              Periodic -- Seasonal factors\\
+    \code{dlmModTrig}&              Periodic -- Trigonometric form\\
+    \hline
+  \end{tabular}
+  \caption{Creator functions for special models.}
+  \label{tab:dlmMod}
+\end{table}
+Except for \code{dlmModARMA}, which handles also the multivariate case, the
+other creator functions are limited to the case of univariate observations.
+More complicated DLMs can be explicitely defined using the general function
+\code{dlm}. 
+
+\subsection{Combining models: sums and outer sums}
+From a few basic models, one can obtain more general models by means of
+different forms of ``addition''. In general, suppose that one has $k$
+independent DLMs for $m$-dimensional observations, where the $i$th one is
+defined by the system
+\begin{equation}
+  \label{eq:component}
+  \left\{ 
+    \begin{aligned}
+      y^{(i)}_t &= F^{(i)}_t \theta^{(i)}_t + v^{(i)}_t, & v^{(i)}_t&\sim 
+      \mathcal{N}(0,V^{(i)})\\ 
+      \theta^{(i)}_t &= G^{(i)}_t \theta^{(i)}_{t-1} + w^{(i)}_t, &
+      w^{(i)}_t&\sim \mathcal{N}(0,W^{(i)}) 
+    \end{aligned}\right.
+\end{equation}
+$m^{(i)}_0$ and $C^{(i)}_0$ are the mean and variance of the initial state
+in DLM $i$. Note that the state vectors may have different dimensions $p_1,
+\dots, p_k$ across different DLMs. Each model may represent a simple feature
+of the observation process, such as a stochastic trend, a periodic
+component, and so on, so that $y_t = y^{(1)}_t + \cdot + y^{(k)}_t$ is the
+actual observation at time $t$. This suggests to combine, or add, the DLMs
+into a comprehensive one by defining the state of the system by $\theta_t' =
+\bigl( {\theta^{(1)}_t}', \dots, {\theta^{(k)}_t}' \bigr)$, together with the
+matrices 
+\begin{align*}
+  F_t &= \bigl( F^{(1)}\mid\ldots\mid F^{(k)}_t\bigr), & V_t &= \sum_{i=1}^k
+  V^{(i)}_t,\\
+  G_t &= 
+  \begin{bmatrix}
+    G^{(1)}_t & &\\
+    & \ddots &\\
+    && G^{(k)}_t
+  \end{bmatrix}, &
+ W_t &= 
+  \begin{bmatrix}
+    W^{(1)}_t & &\\
+    & \ddots &\\
+    && W^{(k)}_t
+  \end{bmatrix},\\
+  m_0' &= \bigl({m^{(1)}_0}', \ldots, {m^{(k)}_0}'\bigr), &
+  C_0 &=  
+  \begin{bmatrix}
+    C^{(1)}_0 & &\\
+    & \ddots &\\
+    && C^{(k)}_0
+  \end{bmatrix}.
+\end{align*}
+The form just described of model composition can be thought of as a sum of
+models. Package \dlm{} provides a method function for the generic \code{+} for
+objects of class \code{dlm} which performs this sum of DLMs.
+
+For example, suppose one wants to model a time series as a sum of a stochastic
+linear trend and a quarterly seasonal component, observed with noise. The
+model can be set up as follows:
+
+<<results = hide>>= 
+dlmModPoly() + dlmModSeas(4)
+@ 
+
+The nonzero entries in the $V$ and $W$ matrices can be specified to have more
+meaningful values in the calls to \code{dlmModPoly} and/or \code{dlmModSeas},
+or changed after the combined model is set up. 
+\bigskip
+
+There is another natural way of combining DLMs which resambles an ``outer''
+sum. Consider again the $k$ models \eqref{eq:component}, but here the
+dimension of the observations may be different for each model, say $m_1,\dots,
+m_k$. An obvious way of obtaining a multivariate models including all the
+$y^{(i)}_t$ is to consider the models independent and set $y_t' = \bigl(
+{y^{(1)}_t}', \dots, {y^{(k)}_t}' \bigr)$. Note that each $y^{(i)}_t$ may
+itself be a random vector. This corresponds to the definition of a new DLM
+with state vector $\theta_t' = \bigl( {\theta^{(1)}_t}', \dots,
+{\theta^{(k)}_t}' \bigr)$, as in the previous case, and matrices
+\begin{align*}
+  F_t &= 
+  \begin{bmatrix}
+    F^{(1)}_t & &\\
+    & \ddots &\\
+    && F^{(k)}_t
+  \end{bmatrix}, &
+ V_t &= 
+  \begin{bmatrix}
+    V^{(1)}_t & &\\
+    & \ddots &\\
+    && V^{(k)}_t
+  \end{bmatrix},\\
+  G_t &= 
+  \begin{bmatrix}
+    G^{(1)}_t & &\\
+    & \ddots &\\
+    && G^{(k)}_t
+  \end{bmatrix}, &
+ W_t &= 
+  \begin{bmatrix}
+    W^{(1)}_t & &\\
+    & \ddots &\\
+    && W^{(k)}_t
+  \end{bmatrix},\\
+  m_0' &= \bigl({m^{(1)}_0}', \ldots, {m^{(k)}_0}'\bigr), &
+  C_0 &=  
+  \begin{bmatrix}
+    C^{(1)}_0 & &\\
+    & \ddots &\\
+    && C^{(k)}_0
+  \end{bmatrix}.
+\end{align*}
+
+For example, suppose you have two time series, the first following a
+stochastic linear trend and the second a random noise plus a quarterly
+seasonal component, both series being observed with noise. A joint DLM for the
+two series, assuming independence, can be set up in \rlan{} as follow.
+
+<<results = hide>>= 
+dlmModPoly(dV = 0.2, dW = c(0, 0.5)) %+% 
+    (dlmModSeas(4, dV = 0, dW = c(0, 0, 0.35)) + 
+     dlmModPoly(1, dV = 0.1, dW = 0.03))
+@ 
+
+\subsection{Time-varying models}
+In a time-varying DLM at least one of the entries of $F_t$, $V_t$, $G_t$, or
+$W_t$ changes with time. We can think of any such entry as a time series or,
+more generally, a numeric vector. All together, the time-varying entries of
+the model matrices can be stored as a multivariate time series or a numeric
+matrix. This idea forms the basis for the internal representation of a
+time-varying DLM. A object \code{m} of class \code{dlm} may contain components
+named \code{JFF, JV, JGG, JW}, and \code{X}. The first four are matrices of
+integers of the same dimension as \code{FF, V, GG, W}, respectively, while
+\code{X} is an $m$ by $n$ matrix, where $n$ is the number of observations in
+the data. Entry $(i, j)$ of \code{JFF} is zero if the corresponding entry of
+\code{FF} is time invariant, or $k$ if the vector of values of $F_t(i,j)$ at
+different times is stored in \code{X[,k]}. In this case the actual value of
+\code{FF[i,j]} in the model object is not used. Similarly for the remaining
+matrices of the DLM. For example, a dynamic linear regression can be modeled
+as
+$$\left\{ 
+  \begin{aligned}
+    y_t &= \alpha_t + x_t\beta_t + v_t & v_t&\sim \mathcal{N}(0,V_t)\\
+    \alpha_t &= \alpha_{t-1} + w_{\alpha,t}, & w_{\alpha,t} &\sim
+    \mathcal{N}(0,W_{\alpha,t})\\ 
+    \beta_t &= \beta_{t-1} + w_{\beta,t}, & w_{\beta,t} &\sim
+    \mathcal{N}(0,W_{\beta,t}). 
+  \end{aligned}\right.
+$$
+Here the state of the system is $\theta_t = (\alpha_t,\; \beta_t)'$, with
+$\beta_t$ being the regression coefficient at time $t$ and $x_t$ being a
+covariate at time $t$, so that $F_t = [1,\; x_t]$. Such a DLM can be set up in
+\rlan{} as follows,
+
+<<>>=
+u <- rnorm(25)
+myMod <- dlmModReg(u, dV = 14.5)
+myMod$JFF
+head(myMod$X)
+@ 
+
+Currently the outer sum of time-varying DLMs is not implemented.
+
+\section{Maximum likelihood estimation}\label{sec:mle}
+It is often the case that one has unknown parameters in the matrices defining
+a DLM. While package \dlm{} was primarily developed for Bayesian inference, it
+offers the possibility of estimating unknown parameters using maximum
+likelihood. The function \code{dlmMLE} is essentially a wrapper around a call
+to \code{optim}. In addition to the data and starting values for the
+optimization algorithm, the function requires a function argument that
+``builds'' a DLM from any specific value of the unknown parameter vector. We
+illustrate the usage of \code{dlmMLE} with a couple of simple examples.
+\bigskip
+
+Consider the Nile river data set. A reasonable model can be a randm walk plus
+noise, with unknown system and observation variances. Parametrizing variances
+on a log scale, to ensure positivity, the model can be build using the
+function defined below.
+
+<<>>= 
+buildFun <- function(x) {
+    dlmModPoly(1, dV = exp(x[1]), dW = exp(x[2]))
+}
+@ 
+
+Starting the optimization from the arbitrary $(0,0)$ point, the MLE of the
+parameter can be found as follows.
+
+<<>>= 
+fit <- dlmMLE(Nile, parm = c(0,0), build = buildFun)
+fit$conv
+dlmNile <- buildFun(fit$par)
+V(dlmNile)
+W(dlmNile)
+@ 
+
+For comparison, the estimated variances obtained using \code{StructTS} are
+
+<<>>=
+StructTS(Nile, "level")
+@ 
+
+As a less trivial example, suppose one wants to take into account a jump in
+the flow of the river following the construction of Ashwan dam in 1898. This
+can be done by inflating the system variance in 1899 using a multiplier bigger
+than one.\label{p:nileJump}
+
+<<>>=
+buildFun <- function(x) {
+    m <- dlmModPoly(1, dV = exp(x[1]))
+    m$JW <- matrix(1)
+    m$X <- matrix(exp(x[2]), nc = 1, nr = length(Nile))
+    j <- which(time(Nile) == 1899)
+    m$X[j,1] <- m$X[j,1] * (1 + exp(x[3]))
+    return(m)
+}
+fit <- dlmMLE(Nile, parm = c(0,0,0), build = buildFun)
+fit$conv
+dlmNileJump <- buildFun(fit$par)
+V(dlmNileJump)
+dlmNileJump$X[c(1, which(time(Nile) == 1899)), 1]
+@ 
+
+The conclusion is that, after accounting for the 1899 jump, the level of the
+series is essentially constant in the periods before and after that year.
+
+
+\section{Filtering, smoothing and forecasting}
+Thanks to the fact that the joint distribution of states and observations is
+Gaussian, when all the parameters of a DLM are known it is fairly easy to
+derive conditional distributions of states or future observations conditional
+on the observed data. In what follows, for pair of integers $(i,j)$, with
+$i\leq j$, we will denote by $y_{i:j}$ the observations from the $i$th to the
+$j$th, inclusive, i.e., $y_i, \dots, y_j$; a similar notation will be used for
+states. The \emph{filtering} distribution at time $t$ is the conditional
+distribution of $\theta_t$ given $y_{1:t}$. The \emph{smoothing} distribution
+at time $t$ is the conditional distribution of $\theta_{0:t}$ given $y_{1:t}$,
+or sometimes, with an innocuous abuse of language, any of its marginals, e.g.,
+the conditional distribution of $\theta_s$ given $y_{1:t}$, with $s\leq t$.
+Clearly, for $s = t$ this marginal coincides with the filtering distribution.
+We speak of \emph{forecast} distribution, or \emph{predictive} distribution,
+to denote a conditional distribution of future states and/or observations,
+given the data up to time $t$.  Recursive algorithms, based on the celebrated
+Kalman filter algorithm or extensions thereof, are available to compute
+filtering and smoothing distributions. Predictive distributions can be easily
+derived recursively from the model definition, using as ``prior'' mean and
+variance -- $m_0$ and $C_0$ -- the mean and variance of the filtering
+distribution. This is the usual Bayesian sequential updating, in which the
+posterior at time $t$ takes the role of a prior distribution for what concerns
+the observations after time $t$. Note that any marginal or conditional
+distribution, in particular the filtering, smoothing and predictive
+distributions, is Gaussian and, as such, it is identified by its mean and
+variance. 
+
+
+\subsection{Filtering}
+Consider again the last model fitted to the Nile river data on page
+\pageref{p:nileJump}. Taking the estimated parameters as known, we can compute
+the filtering distribution using \code{dlmFilter}. If $n$ is the number of
+observations in the data set, \code{dlmFilter} returns the mean and variance
+of the $n+1$ filtering distributions that can be computed from the data, i.e.,
+the distribution of $\theta_t$ given $y_{1:t}$ for $t = 0,1, \dots, n$ (for
+$t=0$, this is by convention the prior distribution of $\theta_0$).
+
+<<figFilter>>=  
+nileJumpFilt <- dlmFilter(Nile, dlmNileJump)
+plot(Nile, type = 'o', col = "seagreen")
+lines(dropFirst(nileJumpFilt$m), type = 'o', pch = 20, col = "brown")
+@ 
+
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=  
+<<figFilter>>
+attach(nileJumpFilt)
+v <- unlist(dlmSvd2var(U.C, D.C))
+pl <- dropFirst(m) + qnorm(0.05, sd = sqrt(v[-1]))
+pu <- dropFirst(m) + qnorm(0.95, sd = sqrt(v[-1]))
+detach()
+lines(pl, lty = 2, col = "brown") 
+lines(pu, lty = 2, col = "brown") 
+@ 
+  \caption{Nile data with filtered level}
+  \label{fig:nileFilter}
+\end{figure}
+
+The variances $C_0, \dots, C_n$ of the filtering distributions are returned in
+terms of their singular value decomposition (SVD). The SVD of a symmetric
+nonnegative definite matrix $\Sigma$ is $\Sigma = UD^2U'$, where $U$ is
+orthogonal and $D$ is diagonal. In the list returned by \code{dlmFilter}, the
+$U$ and $D$ matrices corresponding to the SVD of $C_0, \dots, C_n$ can be
+found as components \code{U.C} and \code{D.C}, respectively. While \code{U.C}
+is a list of matrices, since the $D$ part in the SVD is diagonal, \code{D.C}
+consists in a matrix, storing in each row the diagonal entries of succesive
+$D$ matrices. This decomposition is useful for further calculations one may be
+interested in, such as smoothing. However, if the filtering variances are of
+interest per se, then \dlm{} provides the utility function \code{dlmSvd2var},
+which reconstructs the variances from their SVD. Variances can then be used
+for example to compute filtering probability intervals, as illustrated below.
+
+<<>>=
+attach(nileJumpFilt)
+v <- unlist(dlmSvd2var(U.C, D.C))
+pl <- dropFirst(m) + qnorm(0.05, sd = sqrt(v[-1]))
+pu <- dropFirst(m) + qnorm(0.95, sd = sqrt(v[-1]))
+detach()
+lines(pl, lty = 2, col = "brown") 
+lines(pu, lty = 2, col = "brown") 
+@ 
+
+In addition to filtering means and variances, \code{dlmFilter} also returns
+means and variances of the distributions of $\theta_t$ given $y_{1:{t-1}}$,
+$t=1, \dots, n$ (one-step-ahead forecast distributions for the states) and
+means of the distributions of $y_t$ given $y_{1:{t-1}}$, $t=1, \dots, n$
+(one-step-ahead forecast distributions for the observations). The variances
+are returned also in this case in terms of their SVD.
+
+\subsection{Smoothing}
+The function \code{dlmSmooth} computes means and variances of the smoothing
+distributions. It can be given a data vector or matrix together with a
+specific object of class \code{dlm} or, alternatively, a ``filtered DLM''
+produced by \code{dlmFilter}. The following \rlan{} code shows how to use the
+function in the Nile river example.
+
+<<figSmooth>>=
+nileJumpSmooth <- dlmSmooth(nileJumpFilt)
+plot(Nile, type = 'o', col = "seagreen")
+attach(nileJumpSmooth)
+lines(dropFirst(s), type = 'o', pch = 20, col = "brown")
+v <- unlist(dlmSvd2var(U.S, D.S))
+pl <- dropFirst(s) + qnorm(0.05, sd = sqrt(v[-1]))
+pu <- dropFirst(s) + qnorm(0.95, sd = sqrt(v[-1]))
+detach()
+lines(pl, lty = 2, col = "brown") 
+lines(pu, lty = 2, col = "brown") 
+@ 
+
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=
+<<figSmooth>>
+@ 
+  \caption{Nile river data with smoothed level}
+  \label{fig:nileSmooth}
+\end{figure}
+
+As a second example, consider the UK gas consumption data set. On a
+logarithmic scale, this can be reasonably modeled by a DLM containing a
+quarterly seasonal component and a local linear trend, in the form of an
+integrated random walk. We first estimate the unknown variances by ML.
+
+<<>>=
+lGas <- log(UKgas)
+dlmGas <- dlmModPoly() + dlmModSeas(4)
+buildFun <- function(x) {
+    diag(W(dlmGas))[2:3] <- exp(x[1:2])
+    V(dlmGas) <- exp(x[3])
+    return(dlmGas)
+}
+(fit <- dlmMLE(lGas, parm = rep(0, 3), build = buildFun))$conv
+dlmGas <- buildFun(fit$par)
+drop(V(dlmGas))
+diag(W(dlmGas))[2:3]
+@ 
+
+Based on the fitted model, we can compute the smoothing estimates of the
+states. This can be used to obtain a decomposition of the data into a smooth
+trend plus a stochastic seasonal component, subject to measurement error.
+
+<<>>= 
+gasSmooth <- dlmSmooth(lGas, mod = dlmGas)
+x <- cbind(lGas, dropFirst(gasSmooth$s[,c(1,3)]))
+colnames(x) <- c("Gas", "Trend", "Seasonal")
+plot(x, type = 'o', main = "UK Gas Consumption")
+@ 
+
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=
+plot(x, type = 'o', main = "UK Gas Consumption")
+@ 
+  \caption{Gas consumption with ``trend + seasonal'' decomposition}
+  \label{fig:gasDecomposition}
+\end{figure}
+
+\subsection{Forecasting}
+Means and variances of the forecast distributions of states and observations
+can be obtained with the function \code{dlmForecast}, as illustrated in the
+code below. Means and variances of future states and observations are returned
+in a list as components \code{a, R, f,} and \code{Q}.
+
+<<>>=
+gasFilt <- dlmFilter(lGas, mod = dlmGas)
+gasFore <- dlmForecast(gasFilt, nAhead = 20)
+sqrtR <- sapply(gasFore$R, function(x) sqrt(x[1,1]))
+pl <- gasFore$a[,1] + qnorm(0.05, sd = sqrtR)
+pu <- gasFore$a[,1] + qnorm(0.95, sd = sqrtR)
+x <- ts.union(window(lGas, start = c(1982, 1)), 
+              window(gasSmooth$s[,1], start = c(1982, 1)),
+              gasFore$a[,1], pl, pu) 
+plot(x, plot.type = "single", type = 'o', pch = c(1, 0, 20, 3, 3),
+     col = c("darkgrey", "darkgrey", "brown", "yellow", "yellow"),
+     ylab = "Log gas consumption")
+legend("bottomright", legend = c("Observed", 
+                      "Smoothed (deseasonalized)", 
+                      "Forecasted level", "90% probability limit"),
+       bty = 'n', pch = c(1, 0, 20, 3, 3), lty = 1,
+       col = c("darkgrey", "darkgrey", "brown", "yellow", "yellow"))
+@ 
+
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=
+plot(x, plot.type = "single", type = 'o', pch = c(1, 0, 20, 3, 3),
+     col = c("darkgrey", "darkgrey", "brown", "yellow", "yellow"),
+     ylab = "Log gas consumption")
+legend("bottomright", legend = c("Observed", 
+                      "Smoothed (deseasonalized)", 
+                      "Forecasted level", "90% probability limit"),
+       bty = 'n', pch = c(1, 0, 20, 3, 3), lty = 1,
+       col = c("darkgrey", "darkgrey", "brown", "yellow", "yellow"))
+@ 
+  \caption{Gas consumption forecast}
+  \label{fig:gasForecast}
+\end{figure}
+
+
+\section{Bayesian analysis of Dynamic Linear Models}
+If all the parameters defining a DLM are known, then the functions for
+smoothing and forecasting illustrated in the previous section are all is
+needed to perform a Bayesian analysis. At least, this is true if one is
+interested in posterior estimates of unobservable states and future
+observations or states. In almost every real world application a DLM contains
+in its specification one or more unknown parameters that need to be estimated.
+Except for a few very simple models and special priors, the posterior
+distribution of the unknown parameters -- or the joint posterior of parameters
+and states -- does not have a simple form, so the common approach is to use
+Markov chain Monte Carlo (MCMC) methods to generate a sample from the
+posterior\footnote{%
+  An alternative to MCMC is provided by Sequential Monte Carlo methods, which
+  will not be discussed here.}.% 
+MCMC is highly model- and prior-dependent, even within the class of DLMs, and
+therefore we cannot give a general algorithm or canned function that works in
+all cases. However, package \dlm{} provides a few functions to facilitate
+posterior simulation via MCMC. In addition, the package provides a minimal set
+of tools for analyzing the output of a sampler.
+
+\subsection{Forward filtering backward sampling}
+One way of obtaining a sample from the joint posterior of parameters and
+unobservable states is to run a Gibbs sampler, alternating draws from the full
+conditional distribution of the states and from the full conditionals of the
+parameters. While generating the parameters is model dependent, a draw from
+the full conditional distribution of the states can be obtained easily in a
+general way using the so-called Forward Filtering Backward Sampling (FFBS)
+algorithm, developed independently by \cite{Carter+Kohn:1994, Fruewirth:1994,
+  Shephard:1994}. The algorithm consists essentially in a simulation version
+of the Kalman smoother. An alternative algorithm can be found in
+\cite{Durbin+Koopman:2001}.  Note that, within a Gibbs sampler, when
+generating the states, the model parameters are fixed at their most recently
+generated value. The problem therefore reduces to that of drawing from the
+conditional distribution of the states given the observations for a completely
+specified DLM, which is efficiently done based on the general structure of a
+DLM. 
+
+In many cases, even if one is not interested in the states but only in the
+unknown parameters, keeping also the states in the posterior distribution
+simplifies the Gibbs sampler. This typically happens when there are unknown
+parameters in the system equation and system variances, since usually
+conditioning on the states makes those parameters independent of the data and
+results in simpler full conditional distributions. In this framework,
+including the states in the sampler can be seen as a data augmentation
+technique.
+
+In package \dlm{}, FFBS is implemented in the function
+\code{dlmBSample}. To be more precise, this function only performs the
+backward sampling part of the algorithm, starting from a filtered model. The
+only argument of \code{dlmBSample} is in fact a \code{dlmFiltered} object, or
+a list that can be interpreted as such. 
+
+In the code below we generate and plot (Figure~\ref{fig:nileFFBS}) ten
+simulated realizations from the posterior distribution of the unobservable
+``true level'' of the Nile river, using the random walk plus noise model
+(without level jump, see Section~\ref{sec:mle}). Model parameters are fixed for
+this example to their MLE.
+
+<<>>=
+plot(Nile, type = 'o', col = "seagreen")
+nileFilt <- dlmFilter(Nile, dlmNile)
+for (i in 1:10) # 10 simulated "true" levels 
+    lines(dropFirst(dlmBSample(nileFilt)), col = "brown") 
+@ 
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=
+plot(Nile, type = 'o', col = "seagreen")
+for (i in 1:10) # 10 simulated "true" levels 
+    lines(dropFirst(dlmBSample(nileFilt)), col = "brown") 
+@ 
+  \caption{Nile river with simulated \emph{true level}s}
+  \label{fig:nileFFBS}
+\end{figure}
+
+The figure would look much different had we used the model with a jump!
+
+\subsection{Adaptive rejection Metropolis sampling}
+Gilks and coauthors developed in \cite{Gilks+Best+Tan:1995} a clever adaptive
+method, based on rejection sampling, to generate a random variable from any
+specified continuous distribution. Although the algorithm requires the support
+of the target distribution to be bounded, if this is not the case one can, for
+all practical purposes, restrict the distribution to a very large but bounded
+interval. Package \dlm{} provides a port to the original C code written by
+Wally Gilks with the function \code{arms}. The arguments of \code{arms} are a
+starting point, two functions, one returning the log of the target density and
+the other being the indicator of its support, and the size of the requested
+sample. Additional arguments for the log density and support indicator can be
+passed via the \code{...} argument. The help page contain several examples,
+most of them unrelated to DLMs. A nontrivial one is the following, dealing
+with a mixture of normals target. Suppose the target is
+$$f(x) = \sum_{i=1}^k p_i \phi(x; \mu_i, \sigma_i),
+$$
+where $\phi(\cdot;\mu, \sigma)$ is the density of a normal random variable
+with mean $\mu$ and variance $\sigma^2$.
+The following is an \rlan{} function that returns the log density at the point
+\code{x}: 
+
+<<>>=
+lmixnorm <- function(x, weights, means, sds) {
+    log(crossprod(weights, exp(-0.5 * ((x - means) / sds)^2 
+                               - log(sds))))
+}
+@ 
+
+Note that the weights $p_i$'s, as well as means and standard deviations, are
+additional arguments of the function. Since the support of the density is the
+entire real line, we use a reasonably large interval as ``practical support''.
+
+<<>>=
+y <- arms(0, myldens = lmixnorm, 
+          indFunc = function(x,...) (x > (-100)) * (x < 100), 
+          n = 5000, weights = c(1, 3, 2), 
+          means = c(-10, 0, 10), sds = c(7, 5, 2))
+summary(y)
+library(MASS)
+truehist(y, prob = TRUE, ylim = c(0, 0.08), bty = 'o')
+curve(colSums(c(1, 3, 2) / 6 *
+              dnorm(matrix(x, 3, length(x), TRUE), 
+                    mean = c(-10, 0, 10), sd = c(7, 5, 2))), 
+      add = TRUE)
+legend(-25, 0.07, "True density", lty = 1, bty = 'n')
+@ 
+\begin{figure}[htbp]
+  \centering
+<<echo=false, fig=true>>=
+truehist(y, prob = TRUE, ylim = c(0, 0.08), bty = 'o')
+curve(colSums(c(1, 3, 2) / 6 *
+              dnorm(matrix(x, 3, length(x), TRUE), 
+                    mean = c(-10, 0, 10), sd = c(7, 5, 2))), add = TRUE)
+legend(-25, 0.07, "True density", lty = 1, bty = 'n')
+@ 
+  \caption{Mixture of 3 Normals}
+  \label{fig:armsUni}
+\end{figure}
+
+A useful extension in the function \code{arms} is the possibility of
+generating samples from multivariate target densities. This is obtained by
+generating a random line through the starting, or current, point and applying
+the univariate ARMS algorithm along the selected line. Several examples of
+this type of application are contained in the help page.
+
+\subsection{Gibbs sampling: an example}
+We provide in this section a simple example of a Gibbs sampler for a DLM with
+unknown variances. This type of model is rather common in applications and is
+sometimes referred to as \emph{$d$-inverse-gamma} model. 
+
+Consider again the UK gas consumption data modeled as a local linear trend
+plus a seasonal component, observed with noise. The model is based on the
+unobserved state
+$$\theta_t = \bigl(\mu_t\;\beta_t\; s^{(1)}_t\; s^{(2)}_t\; s^{(3)}_t\bigr)',
+$$
+where $\mu_t$ is the current level, $\beta_t$ is the slope of the trend,
+$s^{(1)}_t, s^{(2)}_t$ and $s^{(3)}_t$ are the seasonal components during the
+current quarter, previous quarter, and two quarters back. The observation at
+time $t$ is given by
+$$y_t = \mu_t + s^{(1)}_t + v_t, \qquad v_t\sim\mathcal{N}(0, \sigma^2).
+$$
+We assume the following dynamics for the unobservable states:
+\begin{align*}
+  \mu_t &= \mu_{t-} + \beta_{t-1},\\
+  \beta_t &= \beta_{t-1} + w^\beta_t,\qquad w^\beta_t\sim\mathcal{N}(0,
+  \sigma_\beta^2) \\
+  s^{(1)}_t &= -s^{(1)}_{t-1} - s^{(2)}_{t-1} - s^{(3)}_{t-1} + w^s_t,\qquad
+  w^\beta_t\sim\mathcal{N}(0, \sigma_s^2)\\
+  s^{(2)}_t &= s^{(1)}_{t-1},\\
+  s^{(3)}_t &= s^{(2)}_{t-1}.
+\end{align*}
+In terms of the DLM representing the model, the above implies
+\begin{align*}
+  V &= [\sigma^2],\\
+  W &= \mathrm{diag}(0, \sigma_\beta^2, \sigma_s^2, 0, 0).
+\end{align*}
+For details on the model, see \cite{West+Harrison:1997}. The unknown
+parameters are therefore the three variances $\sigma^2, \sigma_\beta^2$, and
+$\sigma_s^2$. We assume for their inverse, i.e., for the three precisions,
+independent gamma priors with mean $a, a_{\theta,2}, a_{\theta,3}$ and
+variance $b, b_{\theta,2}, b_{\theta,3}$, respectively.  
+
+Straightforward calculations show that, adding the unobservable states as
+latent variables, a Gibbs sampler can be run based on the following full
+conditional distributions:
+\begin{align*}
+  \theta_{0:n} &\sim\mathcal{N}(),\\
+  \sigma^2 &\sim\mathcal{IG}\left( \frac{a^2}{b} + \frac{n}{2},
+    \frac{a}{b} + \frac{1}{2} SS_y \right),\\
+  \sigma_\beta^2 &\sim\mathcal{IG}\left( \frac{a_{\theta,2}^2}{b_{\theta,2}}
+    + \frac{n}{2}, \frac{a_{\theta,2}}{b_{\theta,2}} + \frac{1}{2}
+    SS_{\theta,2} \right),\\
+  \sigma_s^2 &\sim\mathcal{IG}\left( \frac{a_{\theta,3}^2}{b_{\theta,3}}
+    + \frac{n}{2}, \frac{a_{\theta,3}}{b_{\theta,3}} + \frac{1}{2}
+    SS_{\theta,3} \right),
+\end{align*}
+with
+\begin{align*}
+  SS_y &= \sum_{t=1}^n (y_t - F_t\theta_t)^2,\\
+  SS_{\theta,i} &= \sum_{t=1}^T (\theta_{t,i} - (G_t\theta_{t-1})_i)^2, \qquad
+  i = 2, 3.
+\end{align*}
+The full conditional of the states is normal with some mean and variance that
+we don't need to derive explicitely, since \code{dlmBSample} will take care of
+generating $\theta_{0:n}$ from the appropriate distribution. 
+
+The function \code{dlmGibbsIG}, included in the package more for didactical
+reasons than anything else, implements a Gibbs sampler based on the full
+conditionals described above. A piece of \rlan{} code that runs the sampler
+will look like the following.
+
+<<>>=
+outGibbs <- dlmGibbsDIG(lGas, dlmModPoly(2) + dlmModSeas(4),
+                        a = 1, b = 1000, alpha = 1, beta = 1000,
+                        n.sample = 1100, ind = c(2, 3),
+                        save.states = FALSE)
+@ 
+\begin{figure}[htbp]
+  \SweaveOpts{width=6, height=6}
+  \centering
+<<echo=false, fig=true>>=
+burn <- 100
+attach(outGibbs)
+par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
+plot(dV[-(1:burn)], type = 'l', xlab="", ylab="", main=expression(sigma^2))
+plot(dW[-(1:burn),1], type = 'l', xlab="", ylab="", main=expression(sigma[beta]^2))
+plot(dW[-(1:burn),2], type = 'l', xlab="", ylab="", main=expression(sigma[s]^2))
+use <- length(dV) - burn
+from <- 0.05 * use
+at <- pretty(c(0,use),n=3); at <- at[at>=from]
+plot(ergMean(dV[-(1:burn)], from), type="l", xaxt="n",xlab="", ylab="")
+axis(1, at=at-from, labels=format(at))
+plot(ergMean(dW[-(1:burn),1], from), type="l", xaxt="n",xlab="", ylab="")
+axis(1, at=at-from, labels=format(at))
+plot(ergMean(dW[-(1:burn),2], from), type="l", xaxt="n",xlab="", ylab="")
+axis(1, at=at-from, labels=format(at))
+detach()
+@ 
+  \caption{Trace plots (top) and running ergodic means (bottom)}
+  \label{fig:gibbsUKgas}
+\end{figure}
+
+
+After discarding the first 100 values as burn in, plots of simulated values
+and running ergodic means can be obtained as follows, see
+Figure~\ref{fig:gibbsUKgas}.
+
+<<>>=
+burn <- 100
+attach(outGibbs)
+dV <- dV[-(1:burn)]
+dW <- dW[-(1:burn), ]
+detach()
+par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
+plot(dV, type = 'l', xlab = "", ylab = "", 
+     main = expression(sigma^2))
+plot(dW[ , 1], type = 'l', xlab = "", ylab = "", 
+     main = expression(sigma[beta]^2))
+plot(dW[ , 2], type = 'l', xlab = "", ylab = "", 
+     main = expression(sigma[s]^2))
+use <- length(dV) - burn
+from <- 0.05 * use
+at <- pretty(c(0, use), n = 3); at <- at[at >= from]
+plot(ergMean(dV, from), type = 'l', xaxt = 'n',
+     xlab = "", ylab = "")
+axis(1, at = at - from, labels = format(at))
+plot(ergMean(dW[ , 1], from), type = 'l', xaxt = 'n',
+     xlab = "", ylab = "")
+axis(1, at = at - from, labels = format(at))
+plot(ergMean(dW[ , 2], from), type = 'l', xaxt = 'n',
+     xlab = "", ylab = "")
+axis(1, at =  at - from, labels = format(at))
+@ 
+
+Posterior estimates of the three unknown variances, from the Gibbs sampler
+output, together with their Monte Carlo standard error, can be obtained using
+the function \code{mcmcMean}.
+
+<<>>=
+mcmcMean(cbind(dV[-(1:burn)], dW[-(1:burn), ]))
+@
+<<echo = false, results = hide>>=
+rm(dV, dW)
+@ 
+
+\section{Concluding remarks}
+We have described and illustrated the main features of package \dlm{}.
+Although the package has been developed with Bayesian MCMC-based applications
+in mind, it can also be used for maximum likelihood estimation.  The main
+design objectives had been flexibility and numerical stability of the
+filtering, smoothing, and likelihood evaluation algorithms. This two goals are
+somewhat related, since naive implementations of the Kalman filter are known
+to suffer from numerical instability for general DLMs. Therefore, in an
+environment where the user is free to specify virtually any type of DLM, it
+was important to try to avoid as much as possible the aforementioned
+instability problems. The algorithms used in the package are based on the
+sequential evaluation of variance matrices in terms of their SVD. While this
+can be seen as a form of square root filter (smoother), it is much more robust
+than the standard square root filter based on the propagation of Cholesky
+decomposition. In fact, the SVD-based algorithm does not even require the
+matrix $W$ to be invertible. (It does, however, require $V$ to be
+nonsingular). 
+
+As far as Bayesian inference is concerned, the package provides the tools to
+easily implement a Gibbs sampler for any univariate or multivariate DLM. The
+functions \code{dlmBSample} to generate the states and \code{arms}, the
+multivariate estension of ARMS, can be used alone or in combination in a Gibbs
+sampler, allowing the user to carry out Bayesian posterior inference for a
+wide class of models and priors.
+
+
+\clearpage
+\begin{thebibliography}{9}
+\bibitem[CK]{Carter+Kohn:1994} Carter, C.K. and Kohn, R. (1994). On Gibbs
+  sampling for state space models. {\em Biometrika}, 81.
+\bibitem[DK]{Durbin+Koopman:2001} Durbin, J. and Koopman, S.J. (2001). {\em
+    Time Series analysis by state space methods}. Oxford University Press.
+\bibitem[FS]{Fruewirth:1994} Fr\"uwirth-Schnatter, S. (1994). Data augmentation
+  and dynamic linear models. {\em journal of Time Series Analysis}, 15.  
+\bibitem[GBT]{Gilks+Best+Tan:1995} Gilks, W.R., Best, N.G. and Tan, K.K.C.
+  (1995).  Adaptive rejection Metropolis sampling within Gibbs sampling (Corr:
+  97V46 p541-542 with Neal, R.M.), \emph{Applied Statistics}, 44.
+\bibitem[H]{Harvey:1989} Harvey, A.C. (1989). {\em Forecasting,
+    Structural Time Series Models, and the Kalman Filter}.
+  Cambridge University Press.
+\bibitem[S]{Shephard:1994} Shephard, N. (1994). Partial non-Gaussian state
+  space models. {\em Biometrika}, 81.
+\bibitem[WH]{West+Harrison:1997} West, M. and Harrison, J. (1997). {\em
+    Bayesian forecasting and dynamic models}.  (Second
+  edition. First edition: 1989), Springer, N.Y.
+\bibitem[ZL]{Zhang+Li:1996} Zhang, Y. and Li, R. (1996). Fixed-interval
+  smoothing algorithm based on singular value decomposition. {\em  Proceedings
+  of the 1996 IEEE international conference on control applications}. 
+\end{thebibliography}
+
+\end{document}
+

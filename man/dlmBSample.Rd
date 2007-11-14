@@ -12,7 +12,7 @@ dlmBSample(modFilt)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{modFilt}{%
-    A list, typically the ouptut from \code{dlmFilter}, with elements
+    a list, typically the ouptut from \code{dlmFilter}, with elements
     \code{m}, \code{U.C}, \code{D.C}, \code{a}, \code{U.R}, \code{D.R} (see
     the value returned by \code{dlmFilter}), and \code{mod} The latter is an
     object of class \code{"dlm"} or a list with elements \code{GG}, \code{W}

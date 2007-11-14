@@ -1,5 +1,7 @@
 \name{dlmSmooth}
 \alias{dlmSmooth}
+\alias{dlmSmooth.dlmFiltered}
+\alias{dlmSmooth.default}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{DLM smoothing}
 \description{
@@ -8,19 +10,30 @@
   variance/covariance matrices. 
 }
 \usage{
-dlmSmooth(modFilt, debug = FALSE)
+dlmSmooth(y, \dots)
+\method{dlmSmooth}{default}(y, mod, \dots)
+\method{dlmSmooth}{dlmFiltered}(y, \dots, debug = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{modFilt}{An object of class \code{"dlmFiltered"}, such as returned by 
-    \code{dlmFilter}}
-  \item{debug}{If \code{FALSE}, faster C code will be used, otherwise
+  \item{y}{an object used to select a method.}
+  \item{\dots}{futher arguments passed to or from other methods.}
+  \item{mod}{an object of class \code{"dlm"}.}
+  \item{debug}{if \code{debug=FALSE}, faster C code will be used, otherwise
     all the computations will be performed in R.}
 }
 \details{%
-    The calculations are based on the singular value decomposition (SVD)
-    of the relevant matrices. Variance matrices are returned in terms of
-    their SVD.
+  The default method returns means and variances of the smoothing
+  distribution for a data vector (or matrix) \code{y} and a model
+  \code{mod}.
+
+  \code{dlmSmooth.dlmFiltered} produces the same output based on a
+  \code{dlmFiltered} object, typically one produced by a call to
+  \code{dlmFilter}. 
+
+  The calculations are based on the singular value decomposition (SVD)
+  of the relevant matrices. Variance matrices are returned in terms of
+  their SVD.
 }
 \value{%
   A list with components
@@ -33,7 +46,7 @@ dlmSmooth(modFilt, debug = FALSE)
 \references{Zhang, Y. and Li, X.R., Fixed-interval smoothing algorithm
   based on singular value decomposition, \emph{Proceedings of the 1996
     IEEE International Conference on Control Applications}.}
-\author{Giovanni Petris, \email{<GPetris@uark.edu>}}
+\author{Giovanni Petris, \email{GPetris@uark.edu}}
 
 \seealso{See \code{\link{dlm}} for a description of dlm objects,
   \code{\link{dlmSvd2var}} to obtain a variance matrix from its SVD,
@@ -43,7 +56,20 @@ dlmSmooth(modFilt, debug = FALSE)
   of the state vectors.} 
 
 \examples{%
-### See example for dlmFilter
+s <- dlmSmooth(Nile, dlmModPoly(1, dV = 15100, dW = 1470))
+plot(Nile, type ='o')
+lines(dropFirst(s$s), col = "red")
+
+## Multivariate
+set.seed(2)
+tmp <- dlmRandom(3, 5, 20)
+obs <- tmp$y
+m <- tmp$mod
+rm(tmp)
+
+f <- dlmFilter(obs, m)
+s <- dlmSmooth(f)
+all.equal(s, dlmSmooth(obs, m))
 }
 
 \keyword{ts}
