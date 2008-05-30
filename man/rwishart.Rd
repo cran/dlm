@@ -1,7 +1,7 @@
 \name{rwishart}
 \alias{rwishart}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{Random Whishart matrix}
+\title{Random Wishart matrix}
 \description{
 Generate a draw from a Wishart distribution.
 }

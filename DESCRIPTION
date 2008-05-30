@@ -1,12 +1,12 @@
 Package: dlm
 Title: Bayesian and Likelihood Analysis of Dynamic Linear Models
-Version: 0.8-1
-Date: 2007-11-14
+Version: 0.9-1
+Date: 2008-05-30
 Suggests: MASS
 Author: Giovanni Petris <GPetris@uark.edu>
 Description: Maximum likelihood, Kalman filtering and smoothing, and Bayesian
   analysis of Normal linear State Space models, also known as 
   Dynamic Linear Models 
 Maintainer: Giovanni Petris <GPetris@uark.edu>
-License: GPL (version 2 or later)
-Packaged: Mon Nov 19 10:31:32 2007; gpetris
+License: GPL (>= 2)
+Packaged: Fri May 30 11:32:53 2008; gpetris

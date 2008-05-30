@@ -32,7 +32,6 @@ dlmMLE(y, parm, build, method = "L-BFGS-B", ..., debug = FALSE)
 \value{
   The function \code{dlmMLE} returns the value returned by \code{optim}.
 }
-\references{}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{

@@ -92,7 +92,8 @@ dlm <- function(...) {
         class(mod) <- "dlm"
         return(mod)
     }
-    x[nm1Ind[!is.na(nm1Ind)]] <- lapply(x[nm1Ind[!is.na(nm1Ind)]], as.matrix)
+    x[nm1Ind[!is.na(nm1Ind)]] <-
+        lapply(x[nm1Ind[!is.na(nm1Ind)]], function(x) if (!is.null(x)) as.matrix(x))
     if (!is.null(x$JFF)) {
         if (!(is.numeric(x$JFF) &&
               nrow(x$JFF) == m && ncol(x$JFF) == p))
@@ -133,7 +134,8 @@ dlm <- function(...) {
     }
     if ( is.null(x$X) )
         stop("Component X must be provided for time-varying models")
-    if (!(is.numeric(x$X) && is.matrix(x$X) && ncol(x$X) >= mx))
+    x$X <- as.matrix(x$X)
+    if (!(is.numeric(x$X) && ncol(x$X) >= mx))
         stop("Invalid component X")
     mod <- c(x[nmInd], list(JFF=JFF, JV=JV, JGG=JGG, JW=JW, X=x$X))
     class(mod) <- "dlm"
@@ -149,22 +151,35 @@ is.dlmFiltered <- function(obj) inherits(obj, "dlmFiltered")
 
 
 ###### Extractors and replacement functions
-FF <- function(x)
+FF <- function(x) UseMethod("FF")
+"FF<-" <- function(x, value) UseMethod("FF<-")
+GG <- function(x) UseMethod("GG")
+"GG<-" <- function(x, value) UseMethod("GG<-")
+V <- function(x) UseMethod("V")
+"V<-" <- function(x, value) UseMethod("V<-")
+W <- function(x) UseMethod("W")
+"W<-" <- function(x, value) UseMethod("W<-")
+C0 <- function(x) UseMethod("C0")
+"C0<-" <- function(x, value) UseMethod("C0<-")
+m0 <- function(x) UseMethod("m0")
+"m0<-" <- function(x, value) UseMethod("m0<-")
+
+FF.dlm <- function(x)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
     if (!is.null(x$JFF))
         warning(paste("Time varying", sQuote("F")))
-    return(drop(x$FF))
+    return(x$FF)
 }
 
-"FF<-" <- function(x, value)
+"FF<-.dlm" <- function(x, value)
 {
     value <- as.matrix(value)
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("F")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("F")))
     if (!(is.numeric(value) && is.matrix(value)))
         stop(paste(deparse(substitute(value)), "is not a valid observation matrix"))
     if ( any(dim(x$FF) != dim(value)) )
@@ -175,22 +190,22 @@ FF <- function(x)
     return(x)
 }
              
-GG <- function(x)
+GG.dlm <- function(x)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
     if (!is.null(x$JGG))
         warning(paste("Time varying", sQuote("G")))
-    return(drop(x$GG))
+    return(x$GG)
 }
 
-"GG<-" <- function(x, value)
+"GG<-.dlm" <- function(x, value)
 {
     value <- as.matrix(value)
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("G")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("G")))
     if (!(is.numeric(value) && is.matrix(value)))
         stop(paste(deparse(substitute(value)), "is not a valid evolution matrix"))
     if ( any(dim(x$GG) != dim(value)) )
@@ -201,22 +216,22 @@ GG <- function(x)
     return(x)
 }
 
-V <- function(x)
+V.dlm <- function(x)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
     if (!is.null(x$JV))
         warning(paste("Time varying", sQuote("V")))
-    return(drop(x$V))
+    return(x$V)
 }
 
-"V<-" <- function(x, value)
+"V<-.dlm" <- function(x, value)
 {
     value <- as.matrix(value)
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("V")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("V")))
     if (!(is.numeric(value) && is.matrix(value) && all.equal(value, t(value))
           && all(eigen(value)$values > -.Machine$double.neg.eps)))
         stop(paste(deparse(substitute(value)), "is not a valid variance matrix"))
@@ -228,22 +243,22 @@ V <- function(x)
     return(x)
 }
 
-W <- function(x)
+W.dlm <- function(x)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
     if (!is.null(x$JW))
         warning(paste("Time varying", sQuote("W")))
-    return(drop(x$W))
+    return(x$W)
 }
 
-"W<-" <- function(x, value)
+"W<-.dlm" <- function(x, value)
 {
     value <- as.matrix(value)
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("W")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("W")))
     if (!(is.numeric(value) && is.matrix(value) && all.equal(value, t(value))
           && all(eigen(value)$values > -.Machine$double.neg.eps)))
         stop(paste(deparse(substitute(value)), "is not a valid variance matrix"))
@@ -255,20 +270,20 @@ W <- function(x)
     return(x)
 }
 
-C0 <- function(x)
+C0.dlm <- function(x)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    return(drop(x$C0))
+    return(x$C0)
 }
 
-"C0<-" <- function(x, value)
+"C0<-.dlm" <- function(x, value)
 {
     value <- as.matrix(value)
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("C0")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("C0")))
     if (!(is.numeric(value) && is.matrix(value) && all.equal(value, t(value))
           && all(eigen(value)$values > 0)))
         stop(paste(deparse(substitute(value)), "is not a valid variance matrix"))
@@ -278,18 +293,18 @@ C0 <- function(x)
     return(x)
 }
 
-m0 <- function(x) {
+m0.dlm <- function(x) {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    return(drop(x$m0))
+    return(x$m0)
 }
 
-"m0<-" <- function(x, value)
+"m0<-.dlm" <- function(x, value)
 {
     if (!is.dlm(x))
         stop(paste(deparse(substitute(x)), "is not a dlm object"))
-    if (any(is.na(value)))
-        stop(paste("missing values not allowed in", sQuote("m0")))
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("m0")))
     if (!is.numeric(value))
         stop(paste(deparse(substitute(value)), "is not numeric"))
     if (!(length(value) == length(x$m0) && NCOL(value) == 1))
@@ -297,7 +312,115 @@ m0 <- function(x) {
     x$m0 <- value
     return(x)
 }
-    
+
+### Stuff for time-varying models
+JFF <- function(x) UseMethod("JFF")
+"JFF<-" <- function(x, value) UseMethod("JFF<-")
+JGG <- function(x) UseMethod("JGG")
+"JGG<-" <- function(x, value) UseMethod("JGG<-")
+JV <- function(x) UseMethod("JV")
+"JV<-" <- function(x, value) UseMethod("JV<-")
+JW <- function(x) UseMethod("JW")
+"JW<-" <- function(x, value) UseMethod("JW<-")
+X <- function(x) UseMethod("X")
+"X<-" <- function(x, value) UseMethod("X<-")
+
+JFF.dlm <- function(x) {
+    return(x$JFF)
+}
+
+"JFF<-.dlm" <- function(x, value)
+{
+    if (!is.dlm(x))
+        stop(paste(deparse(substitute(x)), "is not a dlm object"))
+    value <- as.matrix(value)
+    dm <- dim(value)
+    value <- as.integer(value)
+    dim(value) <- dm
+    if (any(is.na(value)))
+        stop(paste("missing values not allowed in", sQuote("JFF")))
+    if ( any(dim(x$FF) != dim(value)) )
+        stop(paste("wrong dimension of", deparse(substitute(value))))
+    x$JFF <- value
+    return(x)
+}
+
+JGG.dlm <- function(x) {
+    return(x$JGG)
+}
+
+"JGG<-.dlm" <- function(x, value)
+{
+    if (!is.dlm(x))
+        stop(paste(deparse(substitute(x)), "is not a dlm object"))
+    value <- as.matrix(value)
+    dm <- dim(value)
+    value <- as.integer(value)
+    dim(value) <- dm
+    if (any(is.na(value)))
+        stop(paste("missing values not allowed in", sQuote("JGG")))
+    if ( any(dim(x$GG) != dim(value)) )
+        stop(paste("wrong dimension of", deparse(substitute(value))))
+    x$JGG <- value
+    return(x)
+}
+
+JV.dlm <- function(x) {
+    return(x$JV)
+}
+
+"JV<-.dlm" <- function(x, value)
+{
+    if (!is.dlm(x))
+        stop(paste(deparse(substitute(x)), "is not a dlm object"))
+    value <- as.matrix(value)
+    dm <- dim(value)
+    value <- as.integer(value)
+    dim(value) <- dm
+    if (any(is.na(value)))
+        stop(paste("missing values not allowed in", sQuote("JV")))
+    if ( any(dim(x$V) != dim(value)) )
+        stop(paste("wrong dimension of", deparse(substitute(value))))
+    x$JV <- value
+    return(x)
+}
+
+JW.dlm <- function(x) {
+    return(x$JW)
+}
+
+"JW<-.dlm" <- function(x, value)
+{
+    if (!is.dlm(x))
+        stop(paste(deparse(substitute(x)), "is not a dlm object"))
+    value <- as.matrix(value)
+    dm <- dim(value)
+    value <- as.integer(value)
+    dim(value) <- dm
+    if (any(is.na(value)))
+        stop(paste("missing values not allowed in", sQuote("JW")))
+    if ( any(dim(x$W) != dim(value)) )
+        stop(paste("wrong dimension of", deparse(substitute(value))))
+    x$JW <- value
+    return(x)
+}
+
+X.dlm <- function(x) {
+    return(x$X)
+}
+
+"X<-.dlm" <- function(x, value)
+{
+    value <- as.matrix(value)
+    dm <- dim(value)
+    value <- as.numeric(value)
+    dim(value) <- dm
+    if (any(!is.finite(value)))
+        stop(paste("finite values needed in", sQuote("X")))
+    x$X <- value
+    return(x)
+}
+
 
 ###### Regression
 dlmModReg <- function(X, addInt=TRUE, dV=1, dW=rep(0,NCOL(X)+addInt),
@@ -1327,14 +1450,17 @@ rwishart <- function(df, p = nrow(SqrtSigma), SqrtSigma = diag(p))
 dlmSvd2var <- function(u, d)
 {
     if (is.matrix(u)) {
-        if ( nrow(u) != length(d) || ncol(u) != length(d) )
+        if ( nrow(u) != length(d) || ncol(u) != (n <- length(d)) )
             stop("inconsistent dimensions")
-        return(tcrossprod(u * d))
+        return(tcrossprod(rep(d, each = n) * u))
     }
     if (is.list(u)) {
         if ( length(u) != NROW(d) )
             stop("length of 'u' must be equal to the number of rows of 'd'")
-        return(lapply(seq(along = u), function(i) tcrossprod(u[[i]] * d[i,])))
+        n <- NCOL(d)
+        return(lapply(seq(along = u), function(i)
+                      tcrossprod(rep(d[i,], each = n) * u[[i]])))
+
     }
     stop("wrong argument 'u'")
 }
@@ -1798,7 +1924,7 @@ ergMean <- function(x, m = 1)
     n <- NROW(x)
     if ( m > n )
         stop("Need m <= n")
-    if ( is.null(dm <- dim(x)) )
+    if ( is.null(dm <- dim(x)) || dm[2] == 1 )
     {
         ## univariate
         if ( m == 1 )
@@ -1892,7 +2018,7 @@ dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
     msg5 <- "Unexpected length of \"shape.theta\" and/or \"rate.theta\""
     msg6 <- "Unexpected length of \"alpha\" and/or \"beta\""
     msg7 <- "\"thin\" must be a nonnegative integer"
-    mgs8 <- "multivariate observations are not allowed" 
+    msg8 <- "multivariate observations are not allowed" 
     msg9 <- "inadmissible value of \"ind\"" 
     if ( NCOL(y) > 1 )
         stop(msg8)
@@ -1976,16 +2102,16 @@ dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
         modFilt <- dlmFilter(y, mod, simplify=TRUE)
         theta[] <- dlmBSample(modFilt)
         ## generate V
-        y.center <- y - theta[-1,,drop=FALSE] %*% t(mod$FF)
+        y.center <- y - tcrossprod(theta[-1,,drop=FALSE], mod$FF)
         SSy <- drop(crossprod(y.center))
         mod$V[] <- 1 / rgamma(1, shape = shape.y,
                               rate = rate.y + 0.5 * SSy) 
         ## generate W
-        theta.center <- theta[-1,,drop=FALSE] - theta[-(nobs + 1),,drop=FALSE] %*%
-            t(mod$GG)
+        theta.center <- theta[-1,,drop=FALSE] -
+            tcrossprod(theta[-(nobs + 1),,drop=FALSE], mod$GG)
         SStheta <- drop(sapply( 1 : p, function(i) crossprod(theta.center[,i])))
         SStheta <- colSums((theta[-1,1:p,drop=FALSE] -
-                            tcrossprod(theta[-(nobs + 1),],mod$GG)[,1:p])^2)
+                            tcrossprod(theta[-(nobs + 1),,drop=FALSE],mod$GG)[,1:p])^2)
         diag(mod$W)[1:p] <- 
             1 / rgamma(p, shape = shape.theta, rate = rate.theta + 0.5 * SStheta) 
         ## save

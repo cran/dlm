@@ -198,7 +198,7 @@ meaningful values in the calls to \code{dlmModPoly} and/or \code{dlmModSeas},
 or changed after the combined model is set up. 
 \bigskip
 
-There is another natural way of combining DLMs which resambles an ``outer''
+There is another natural way of combining DLMs which resembles an ``outer''
 sum. Consider again the $k$ models \eqref{eq:component}, but here the
 dimension of the observations may be different for each model, say $m_1,\dots,
 m_k$. An obvious way of obtaining a multivariate models including all the

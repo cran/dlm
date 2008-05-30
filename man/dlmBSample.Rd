@@ -30,7 +30,6 @@ dlmBSample(modFilt)
 \references{West and Harrison, Bayesian forecasting and dynamic models
   (2nd ed.), Springer (1997).}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
-\note{}
 
 \seealso{See also \code{\link{dlmFilter}}}
 \examples{

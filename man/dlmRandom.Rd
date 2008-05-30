@@ -20,7 +20,7 @@ dlmRandom(m, p, nobs = 0, JFF, JV, JGG, JW)
   \item{JW}{should the model have a time-varying \code{W} component?}
 }
 \details{
-  The function generates randomly the system and oservation matrices and
+  The function generates randomly the system and observation matrices and
   the variances of a DLM having the specified state and observation
   dimension. The system matrix \code{GG} is guaranteed to have
   eigenvalues strictly less than one, which means that a constant DLM is

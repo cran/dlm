@@ -22,7 +22,6 @@
 \source{
   The complete data set is available in package \code{tseries}.
 }
-\references{}
 
 \examples{
 data(USecon)

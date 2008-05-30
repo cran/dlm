@@ -12,8 +12,6 @@ bdiag(...)
 \arguments{
   \item{...}{individual matrices, or a list of matrices.}
 }
-\details{
-}
 \value{
   A matrix obtained by combining the arguments.
 }
