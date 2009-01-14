@@ -16,7 +16,7 @@
 \title{\dlm{}: an \rlan{}  package for Bayesian analysis of Dynamic Linear Models} 
 \author{Giovanni Petris\\
 {\small University of Arkansas, Fayetteville AR}}
-\date{2007-11-14}
+\date{2009-01-14}
 
 \begin{document}
 \setkeys{Gin}{width=0.9\textwidth}
@@ -30,9 +30,9 @@ set.seed(1963)
 @
 
 \section{Defining and manipulating Dynamic Linear Models}
-Package \dlm{} focuses on Bayesian analyisis of Dynamic Linear Models (DLMs),
+Package \dlm{} focuses on Bayesian analysis of Dynamic Linear Models (DLMs),
 also known as linear state space models (see \cite{Harvey:1989,
-  West+Harrison:1997}. The package also includes functions for maximum
+  West+Harrison:1997}). The package also includes functions for maximum
 likelihood estimation of the parameters of a DLM and for Kalman filtering. The
 algorithms used for Kalman filtering, likelihood evaluation, and sampling from
 the state vectors are based on the singular value decomposition (SVD) of the
@@ -83,23 +83,24 @@ be specified, as they are an integral part of the model definition. An
 alternative way to define the same models is 
 
 <<results = hide>>=
-dlmModPoly(1, dV = 0.8, dW = 0.1, C0 = 100)
+dlmModPoly(order = 1, dV = 0.8, dW = 0.1, C0 = 100)
 @ 
 
 This function has default values for \code{m0, C0, dV} and \code{dW} (the
 last two are used to specify the \emph{diagonal} of $V$ and $W$,
 respectively). In fact it also has a default value for the \emph{order} of the
 polynomial model, so the user must be aware of these defaults before using
-them light-heartedly. In particular, the default value for \code{dV} and
+them light-heartedly. In particular, the default values for \code{dV} and
 \code{dW} should be more correctly thought as place holders that are there
 just to allow a complete specification of the model. 
+\bigskip
 
 Consider the second-order polynomial model obtained as
 
 <<>>=
 myMod <- dlmModPoly()
 @ 
-
+%
 Individual components of the model can be accessed and modified in a natural
 way by using the exctractor and replacement functions provided by the
 package.
@@ -129,7 +130,7 @@ DLMs of standard types. They are summarized in Table~\ref{tab:dlmMod}.
   \caption{Creator functions for special models.}
   \label{tab:dlmMod}
 \end{table}
-Except for \code{dlmModARMA}, which handles also the multivariate case, the
+With the exception of \code{dlmModARMA}, which handles also the multivariate case, the
 other creator functions are limited to the case of univariate observations.
 More complicated DLMs can be explicitely defined using the general function
 \code{dlm}. 
@@ -159,7 +160,7 @@ into a comprehensive one by defining the state of the system by $\theta_t' =
 \bigl( {\theta^{(1)}_t}', \dots, {\theta^{(k)}_t}' \bigr)$, together with the
 matrices 
 \begin{align*}
-  F_t &= \bigl( F^{(1)}\mid\ldots\mid F^{(k)}_t\bigr), & V_t &= \sum_{i=1}^k
+  F_t &= \bigl( F^{(1)}_t\mid\ldots\mid F^{(k)}_t\bigr), & V_t &= \sum_{i=1}^k
   V^{(i)}_t,\\
   G_t &= 
   \begin{bmatrix}
@@ -190,19 +191,19 @@ linear trend and a quarterly seasonal component, observed with noise. The
 model can be set up as follows:
 
 <<results = hide>>= 
-dlmModPoly() + dlmModSeas(4)
+myMod <- dlmModPoly() + dlmModSeas(4)
 @ 
-
+%
 The nonzero entries in the $V$ and $W$ matrices can be specified to have more
 meaningful values in the calls to \code{dlmModPoly} and/or \code{dlmModSeas},
 or changed after the combined model is set up. 
 \bigskip
 
 There is another natural way of combining DLMs which resembles an ``outer''
-sum. Consider again the $k$ models \eqref{eq:component}, but here the
+sum. Consider again the $k$ models \eqref{eq:component}, but suppose the
 dimension of the observations may be different for each model, say $m_1,\dots,
-m_k$. An obvious way of obtaining a multivariate models including all the
-$y^{(i)}_t$ is to consider the models independent and set $y_t' = \bigl(
+m_k$. An obvious way of obtaining a multivariate model including all the
+$y^{(i)}_t$ is to consider the models to be independent and set $y_t' = \bigl(
 {y^{(1)}_t}', \dots, {y^{(k)}_t}' \bigr)$. Note that each $y^{(i)}_t$ may
 itself be a random vector. This corresponds to the definition of a new DLM
 with state vector $\theta_t' = \bigl( {\theta^{(1)}_t}', \dots,
@@ -261,9 +262,9 @@ matrix. This idea forms the basis for the internal representation of a
 time-varying DLM. A object \code{m} of class \code{dlm} may contain components
 named \code{JFF, JV, JGG, JW}, and \code{X}. The first four are matrices of
 integers of the same dimension as \code{FF, V, GG, W}, respectively, while
-\code{X} is an $m$ by $n$ matrix, where $n$ is the number of observations in
+\code{X} is an $n$ by $m$ matrix, where $n$ is the number of observations in
 the data. Entry $(i, j)$ of \code{JFF} is zero if the corresponding entry of
-\code{FF} is time invariant, or $k$ if the vector of values of $F_t(i,j)$ at
+\code{FF} is time invariant, or $k$ if the vector of values of $F_t[i,j]$ at
 different times is stored in \code{X[,k]}. In this case the actual value of
 \code{FF[i,j]} in the model object is not used. Similarly for the remaining
 matrices of the DLM. For example, a dynamic linear regression can be modeled
@@ -302,7 +303,7 @@ optimization algorithm, the function requires a function argument that
 illustrate the usage of \code{dlmMLE} with a couple of simple examples.
 \bigskip
 
-Consider the Nile river data set. A reasonable model can be a randm walk plus
+Consider the Nile river data set. A reasonable model can be a random walk plus
 noise, with unknown system and observation variances. Parametrizing variances
 on a log scale, to ensure positivity, the model can be build using the
 function defined below.
@@ -359,7 +360,7 @@ series is essentially constant in the periods before and after that year.
 Thanks to the fact that the joint distribution of states and observations is
 Gaussian, when all the parameters of a DLM are known it is fairly easy to
 derive conditional distributions of states or future observations conditional
-on the observed data. In what follows, for pair of integers $(i,j)$, with
+on the observed data. In what follows, for any pair of integers $(i,j)$, with
 $i\leq j$, we will denote by $y_{i:j}$ the observations from the $i$th to the
 $j$th, inclusive, i.e., $y_i, \dots, y_j$; a similar notation will be used for
 states. The \emph{filtering} distribution at time $t$ is the conditional
@@ -395,7 +396,8 @@ $t=0$, this is by convention the prior distribution of $\theta_0$).
 <<figFilter>>=  
 nileJumpFilt <- dlmFilter(Nile, dlmNileJump)
 plot(Nile, type = 'o', col = "seagreen")
-lines(dropFirst(nileJumpFilt$m), type = 'o', pch = 20, col = "brown")
+lines(dropFirst(nileJumpFilt$m), type = 'o', 
+      pch = 20, col = "brown")
 @ 
 
 \begin{figure}[htbp]
@@ -568,7 +570,7 @@ and states -- does not have a simple form, so the common approach is to use
 Markov chain Monte Carlo (MCMC) methods to generate a sample from the
 posterior\footnote{%
   An alternative to MCMC is provided by Sequential Monte Carlo methods, which
-  will not be discussed here.}.% 
+  will not be discussed here.}. % 
 MCMC is highly model- and prior-dependent, even within the class of DLMs, and
 therefore we cannot give a general algorithm or canned function that works in
 all cases. However, package \dlm{} provides a few functions to facilitate
@@ -629,7 +631,7 @@ for (i in 1:10) # 10 simulated "true" levels
   \caption{Nile river with simulated \emph{true level}s}
   \label{fig:nileFFBS}
 \end{figure}
-
+%
 The figure would look much different had we used the model with a jump!
 
 \subsection{Adaptive rejection Metropolis sampling}
@@ -639,7 +641,7 @@ specified continuous distribution. Although the algorithm requires the support
 of the target distribution to be bounded, if this is not the case one can, for
 all practical purposes, restrict the distribution to a very large but bounded
 interval. Package \dlm{} provides a port to the original C code written by
-Wally Gilks with the function \code{arms}. The arguments of \code{arms} are a
+Gilks with the function \code{arms}. The arguments of \code{arms} are a
 starting point, two functions, one returning the log of the target density and
 the other being the indicator of its support, and the size of the requested
 sample. Additional arguments for the log density and support indicator can be
@@ -758,14 +760,15 @@ The full conditional of the states is normal with some mean and variance that
 we don't need to derive explicitely, since \code{dlmBSample} will take care of
 generating $\theta_{0:n}$ from the appropriate distribution. 
 
-The function \code{dlmGibbsIG}, included in the package more for didactical
+The function \code{dlmGibbsDIG}, included in the package more for didactical
 reasons than anything else, implements a Gibbs sampler based on the full
 conditionals described above. A piece of \rlan{} code that runs the sampler
 will look like the following.
 
 <<>>=
 outGibbs <- dlmGibbsDIG(lGas, dlmModPoly(2) + dlmModSeas(4),
-                        a = 1, b = 1000, alpha = 1, beta = 1000,
+                        a.y = 1, b.y = 1000, a.theta = 1, 
+                        b.theta = 1000,
                         n.sample = 1100, ind = c(2, 3),
                         save.states = FALSE)
 @ 
@@ -840,20 +843,20 @@ rm(dV, dW)
 \section{Concluding remarks}
 We have described and illustrated the main features of package \dlm{}.
 Although the package has been developed with Bayesian MCMC-based applications
-in mind, it can also be used for maximum likelihood estimation.  The main
-design objectives had been flexibility and numerical stability of the
-filtering, smoothing, and likelihood evaluation algorithms. This two goals are
-somewhat related, since naive implementations of the Kalman filter are known
-to suffer from numerical instability for general DLMs. Therefore, in an
-environment where the user is free to specify virtually any type of DLM, it
-was important to try to avoid as much as possible the aforementioned
-instability problems. The algorithms used in the package are based on the
-sequential evaluation of variance matrices in terms of their SVD. While this
-can be seen as a form of square root filter (smoother), it is much more robust
-than the standard square root filter based on the propagation of Cholesky
-decomposition. In fact, the SVD-based algorithm does not even require the
-matrix $W$ to be invertible. (It does, however, require $V$ to be
-nonsingular). 
+in mind, it can also be used for maximum likelihood estimation and Kalman
+filtering/smoothing.  The main design objectives had been flexibility and
+numerical stability of the filtering, smoothing, and likelihood evaluation
+algorithms. These two goals are somewhat related, since naive implementations
+of the Kalman filter are known to suffer from numerical instability for
+general DLMs. Therefore, in an environment where the user is free to specify
+virtually any type of DLM, it was important to try to avoid as much as
+possible the aforementioned instability problems. The algorithms used in the
+package are based on the sequential evaluation of variance matrices in terms
+of their SVD. While this can be seen as a form of square root filter
+(smoother), it is much more robust than the standard square root filter based
+on the propagation of Cholesky decomposition. In fact, the SVD-based algorithm
+does not even require the matrix $W$ to be invertible. (It does require $V$ to
+be nonsingular, however).
 
 As far as Bayesian inference is concerned, the package provides the tools to
 easily implement a Gibbs sampler for any univariate or multivariate DLM. The

@@ -479,9 +479,10 @@ dlmModPoly <- function(order=2, dV=1,
 }
 
 ###### Seasonal factors
-dlmModSeas <- function(frequency, m0=rep(0,frequency-1),
-                       C0=1e7*diag(nrow=frequency-1), dV=1,
-                       dW=c(1,rep(0,frequency-2))) {
+dlmModSeas <- function(frequency, dV=1, dW=c(1,rep(0,frequency-2)),
+                       m0=rep(0,frequency-1),
+                       C0=1e7*diag(nrow=frequency-1))
+{
     frequency <- as.integer(frequency)
     p <- frequency - 1
     if (!( length(dV) == 1 && length(dW) == p && length(m0) == p &&
@@ -506,7 +507,8 @@ dlmModSeas <- function(frequency, m0=rep(0,frequency-1),
 }
 
 ###### Fourier representation
-dlmModTrig <- function(s, q, om, tau, m0, C0, dV=1, dW=0) {
+dlmModTrig <- function(s, q, om, tau, dV=1, dW=0, m0, C0)
+{
     if ( hasArg(s) ) {
         if ( hasArg(om) )
             stop("Cannot specify both 's' and 'om'")
@@ -591,7 +593,7 @@ dlmModTrig <- function(s, q, om, tau, m0, C0, dV=1, dW=0) {
 }
 
 ###### ARMA
-dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, m0, C0, dV)
+dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
 {
     if (is.matrix(sigma2) && (m <- nrow(sigma2)) > 1)
     { ## multivariate
@@ -821,8 +823,11 @@ dlmLL <- function(y, mod, debug=FALSE)
     ## Note: V must be nonsingular
     ## The C code relies on the order of the elements in 'mod'
     ## mod = list(m0, C0, FF, V, GG, W)
-    storage.mode(y) <- "double"
     if (!debug) {
+        storage.mode(y) <- "double"
+        matchnames <- match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))
+        for (i in matchnames)
+            storage.mode(mod[[i]]) <- "double"
         ## define flags for time-varying components
         if (is.null(mod$JFF))
             tvFF <- FALSE
@@ -1015,7 +1020,6 @@ dlmLL <- function(y, mod, debug=FALSE)
 "dlmMLE" <- function(y, parm, build, method = "L-BFGS-B",
                      ..., debug = FALSE)
 {
-    storage.mode(y) <- "double"
     logLik <- function(parm, ...)
     {
         mod <- build(parm, ...)
@@ -1029,7 +1033,6 @@ dlmLL <- function(y, mod, debug=FALSE)
 dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
 {
     ## Note: V must be nonsingular
-    storage.mode(y) <- "double"
     mod1 <- mod
     yAttr <- attributes(y)
     ytsp <- tsp(y)
@@ -1037,6 +1040,10 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
     timeNames <- dimnames(y)[[1]]
     stateNames <- names(mod$m0)
     if (!debug) {
+        storage.mode(y) <- "double"
+        matchnames <- match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))
+        for (i in matchnames)
+            storage.mode(mod[[i]]) <- "double"
         ## define flags for time-varying components
         if (is.null(mod$JFF))
             tvFF <- FALSE
@@ -1426,13 +1433,19 @@ dlmBSample <- function(modFilt)
 }
 
 
-
-rwishart <- function(df, p = nrow(SqrtSigma), SqrtSigma = diag(p))
+rwishart <- function(df, p = nrow(SqrtSigma), Sigma,
+                     SqrtSigma = diag(p))
 {
     ## generate a Wishart-distributed matrix - from S-news, due to B. Venables
     ## note: Sigma = crossprod(SqrtSigma), and df must be integer
+    if (!missing(Sigma))
+    {
+        ## compute SqrtSigma
+        tmp <- svd(Sigma)
+        SqrtSigma <- sqrt(tmp$d) * t(tmp$u)
+    }
     if((Ident <- missing(SqrtSigma)) && missing(p))
-        stop("either p or SqrtSigma must be specified")
+        stop("either p, Sigma or SqrtSigma must be specified")
     Z <- matrix(0, p, p)
     diag(Z) <- sqrt(rchisq(p, df:(df-p+1)))
     if(p > 1)
@@ -1836,11 +1849,16 @@ mcmcSD <- function(x) {
         stop(msg)
     univariate <- function(x) {
         l <- floor(30*log10(length(x)))
-        ac <- acf(x, lag.max=l, plot=FALSE)$acf
+        ac <- drop(acf(x, lag.max=l, plot=FALSE)$acf)
         tau <- cumsum(c(1, 2 * ac[-1]))
         k <- 0
         while ( (k < 3 * tau[k+1]) &&  (k < l)) k <- k+1
         tau <- tau[k+1]
+        if (tau < 0)
+            {
+                tau <- 1
+                warning("estimated s.d. may not be reliable")
+            }
         return(sqrt(var(x) * tau / length(x)))
     }
     if (is.null(dim(x)))
@@ -1972,51 +1990,54 @@ dropFirst <- function(x)
 ######
 ###### Gibbs sampler for "d-inverse-gamma" model
 ######
-dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
+## dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
+##                         shape.theta, rate.theta, n.sample = 1,
+##                         thin = 0, ind, save.states = TRUE)
+dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
                         shape.theta, rate.theta, n.sample = 1,
                         thin = 0, ind, save.states = TRUE)
-#################################################################################
-#################################################################################
-### Gibbs sampler for the 'd-inverse-gamma' model                             ###
-### Constant DLMs and univariate observations only                            ###
-###                                                                           ### 
-### y      : data (vector or univariate time series).                         ###
-### mod    : a dlm model for the data, with a diagonal 'W' component.         ###
-### a      : prior mean of the observation precision.                         ### 
-### b      : prior variance of the observation precision.                     ###
-### alpha  : vector of prior mean(s) of the system precision(s);              ###
-###          recycled if needed.                                              ###
-### beta   : vector of prior variance(s) of the system precision(s);          ###
-###          recycled if needed.                                              ###
-### shape.y, rate.y : shape and rate parameters of the prior gamma            ###
-###          distribution of the observation precision. Can be specified      ###
-###          in alternative to 'a' and 'b'.                                   ###
-### shape.theta, rate.theta : vectors of shape and rate parameters of the     ###
-###          prior distributions of the system precision(s). Can be           ###
-###          specified in alternative to 'alpha' and 'beta'.                  ###
-### n.sample : number of simulated values in the output.                      ###
-### thin   : number of sweeps to discard between each pair of returned        ###
-###          draws.                                                           ###
-### ind    : vector of indices. If specified, the sampler will only draw      ###
-###          the diagonal elements of 'W' having the specified indices.       ###
-###          Useful when some of the system variances are zero.               ###
-### save.states : if TRUE, the generated states will be returned together     ###
-###          with the generated parameter values.                             ###
-###                                                                           ###
-### Value:                                                                    ###
-### A list with components 'dV', 'dW', 'theta' (only if 'save.states' is      ###
-###  TRUE). 'dV' contains the generated observation variances, 'dW' the       ###
-### generated system variances, 'theta' the generated states.                 ###
-#################################################################################
-#################################################################################    
+##################################################################################
+##################################################################################
+### Gibbs sampler for the 'd-inverse-gamma' model                              ###
+### Constant DLMs and univariate observations only                             ###
+###                                                                            ### 
+### y       : data (vector or univariate time series).                         ###
+### mod     : a dlm model for the data, with a diagonal 'W' component.         ###
+### a.y     : prior mean of the observation precision.                         ### 
+### b.y     : prior variance of the observation precision.                     ###
+### a.theta : vector of prior mean(s) of the system precision(s);              ###
+###           recycled if needed.                                              ###
+### b.theta : vector of prior variance(s) of the system precision(s);          ###
+###           recycled if needed.                                              ###
+### shape.y, rate.y : shape and rate parameters of the prior gamma             ###
+###           distribution of the observation precision. Can be specified      ###
+###           in alternative to 'a' and 'b'.                                   ###
+### shape.theta, rate.theta : vectors of shape and rate parameters of the      ###
+###           prior distributions of the system precision(s). Can be           ###
+###           specified in alternative to 'alpha' and 'beta'.                  ###
+### n.sample : number of simulated values in the output.                       ###
+### thin    : number of sweeps to discard between each pair of returned        ###
+###           draws.                                                           ###
+### ind     : vector of indices. If specified, the sampler will only draw      ###
+###           the diagonal elements of 'W' having the specified indices.       ###
+###           Useful when some of the system variances are zero.               ###
+### save.states : if TRUE, the generated states will be returned together      ###
+###           with the generated parameter values.                             ###
+###                                                                            ###
+### Value:                                                                     ###
+### A list with components 'dV', 'dW', 'theta' (only if 'save.states' is       ###
+###  TRUE). 'dV' contains the generated observation variances, 'dW' the        ###
+### generated system variances, 'theta' the generated states.                  ###
+##################################################################################
+##################################################################################    
 {    
-    msg1 <- "Either \"a\" and \"b\" or \"shape.y\" and \"rate.y\" must be specified"
+    msg1 <- "Either \"a.y\" and \"b.y\" or \"shape.y\" and \"rate.y\" must be specified"
     msg2 <- "Unexpected length of \"shape.y\" and/or \"rate.y\""
-    msg3 <- "Unexpected length of \"a\" and/or \"b\""
-    msg4 <- paste("Either \"alpha\" and \"beta\" or \"shape.theta\"",
+    msg3 <- "Unexpected length of \"a.y\" and/or \"b.y\""
+    msg4 <- paste("Either \"a.theta\" and \"b.theta\" or \"shape.theta\"",
                   "and \"rate.theta\" must be specified")
     msg5 <- "Unexpected length of \"shape.theta\" and/or \"rate.theta\""
-    msg6 <- "Unexpected length of \"alpha\" and/or \"beta\""
+    msg6 <- "Unexpected length of \"a.theta\" and/or \"b.theta\""
     msg7 <- "\"thin\" must be a nonnegative integer"
     msg8 <- "multivariate observations are not allowed" 
     msg9 <- "inadmissible value of \"ind\"" 
@@ -2047,7 +2068,7 @@ dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
     else
         stop(msg7)
     ## check hyperpriors for precision of 'y'
-    if (is.null(a))
+    if (is.null(a.y))
         if (is.null(shape.y)) stop(msg1)
         else
             if (is.null(rate.y)) stop(msg1)
@@ -2058,16 +2079,16 @@ dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
                     warning(msg2)
             }
     else
-        if (is.null(b)) stop(msg1)
+        if (is.null(b.y)) stop(msg1)
         else
         {
-            if (!all(c(length(a), length(b)) == 1))
+            if (!all(c(length(a.y), length(b.y)) == 1))
                 warning(msg3)
-            shape.y <- a^2 / b
-            rate.y <- a / b
+            shape.y <- a.y^2 / b.y
+            rate.y <- a.y / b.y
         }
     ## check hyperpriors for precision(s) of 'theta'
-    if (is.null(alpha))
+    if (is.null(a.theta))
         if (is.null(shape.theta)) stop(msg4)
         else
             if (is.null(rate.theta)) stop(msg4)
@@ -2078,13 +2099,13 @@ dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
                     warning(msg5)
             }
     else
-        if (is.null(beta)) stop(msg4)
+        if (is.null(b.theta)) stop(msg4)
         else
         {
-            if (!all(c(length(alpha), length(beta)) %in% c(1,p)))
+            if (!all(c(length(a.theta), length(b.theta)) %in% c(1,p)))
                 warning(msg6)
-            shape.theta <- alpha^2 / beta
-            rate.theta <- alpha / beta
+            shape.theta <- a.theta^2 / b.theta
+            rate.theta <- a.theta / b.theta
         }
     shape.y <- shape.y + 0.5 * nobs
     shape.theta <- shape.theta + 0.5 * nobs

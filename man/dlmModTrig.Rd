@@ -3,21 +3,20 @@
 \title{Create Fourier representation of a periodic DLM component}
 \description{
   The function creates a dlm representing a specified periodic
-  component.} 
+  component. 
 }
 \usage{
-dlmModTrig(s, q, om, tau, m0, C0, dV = 1, dW = 0)
+dlmModTrig(s, q, om, tau, dV = 1, dW = 0, m0, C0)
 }
 \arguments{
   \item{s}{the period, if integer.}
   \item{q}{number of harmonics in the DLM.}
   \item{om}{the frequency.}
   \item{tau}{the period, if not an integer.}
-  \item{m0}{\eqn{m_0}{m0}}
-  \item{C0}{\eqn{C_0}{C0}}
-  \item{dV}{variance of the observational noise.}
-  \item{dW}{a single number expressing the variance of the system
-    noise. }
+  \item{dV}{variance of the observation noise.}
+  \item{dW}{a single number expressing the variance of the system noise.}
+  \item{m0}{\eqn{m_0}{m0}, the expected value of the pre-sample state vector.}
+  \item{C0}{\eqn{C_0}{C0}, the variance matrix of the pre-sample state vector.}
 }
 \details{
   The periodic component is specified by one and only one of \code{s},

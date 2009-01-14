@@ -6,7 +6,7 @@
   having one or more unknown variances in its specification.
 }
 \usage{
-dlmGibbsDIG(y, mod, a, b, alpha, beta, shape.y, rate.y,
+dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
             shape.theta, rate.theta, n.sample = 1,
             thin = 0, ind, save.states = TRUE)
 }
@@ -14,10 +14,10 @@ dlmGibbsDIG(y, mod, a, b, alpha, beta, shape.y, rate.y,
 \arguments{
   \item{y}{data vector or univariate time series}
   \item{mod}{a dlm for univariate observations}
-  \item{a}{prior mean of observation variance}
-  \item{b}{prior variance of observation variance}
-  \item{alpha}{prior mean of system variances}
-  \item{beta}{prior variance of system variances}
+  \item{a.y}{prior mean of observation variance}
+  \item{b.y}{prior variance of observation variance}
+  \item{a.theta}{prior mean of system variances}
+  \item{b.theta}{prior variance of system variances}
   \item{shape.y}{shape parameter of the prior of observation variance}
   \item{rate.y}{rate parameter of the prior of observation variance}
   \item{shape.theta}{shape parameter of the prior of system variances}

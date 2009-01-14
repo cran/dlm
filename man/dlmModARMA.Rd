@@ -7,7 +7,7 @@
   univariate or multivariate ARMA process
 }
 \usage{
-dlmModARMA(ar = NULL, ma = NULL, sigma2 = 1, m0, C0, dV)
+dlmModARMA(ar = NULL, ma = NULL, sigma2 = 1, dV, m0, C0)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -16,14 +16,11 @@ dlmModARMA(ar = NULL, ma = NULL, sigma2 = 1, m0, C0, dV)
   \item{ma}{a vector or a list of matrices (in the multivariate case)
     containing the moving average coefficients.}
   \item{sigma2}{the variance (or variance matrix) of the innovations.}
-  \item{m0}{returned as \code{m0} in the created dlm object. It defaults
-    to a vector of zeroes.}
-  \item{C0}{returned as \code{C0} in the created dlm object. It defaults
-    to a \code{1e7 * diag(k)}, where \code{k} is the dimension of the
-    state vector in the DLM representation of the specified ARMA model.}
   \item{dV}{the variance, or the diagonal elements of the variance
-    matrix, of the observational noise. \code{V} is assumed to be
-    diagonal and it defaults to zero.}
+    matrix in the multivariate case, of the observation noise. \code{V}
+    is assumed to be diagonal and it defaults to zero.}
+  \item{m0}{\eqn{m_0}{m0}, the expected value of the pre-sample state vector.}
+  \item{C0}{\eqn{C_0}{C0}, the variance matrix of the pre-sample state vector.}
 }
 \details{
   The returned DLM only gives one of the many possible representations

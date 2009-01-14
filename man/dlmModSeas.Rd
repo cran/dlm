@@ -5,16 +5,16 @@
   The function creates a DLM representation of seasonal component. 
 }
 \usage{
-dlmModSeas(frequency, m0 = rep(0, frequency - 1),
-           C0 = 1e+07 * diag(nrow = frequency - 1), dV = 1,
-           dW = c(1, rep(0, frequency - 2))) 
+dlmModSeas(frequency, dV = 1, dW = c(1, rep(0, frequency - 2)),
+           m0 = rep(0, frequency - 1),
+           C0 = 1e+07 * diag(nrow = frequency - 1)) 
 }
 \arguments{
   \item{frequency}{how many seasons?}
-  \item{m0}{\eqn{m_0}{m0}.}
-  \item{C0}{\eqn{C_0}{C0}.}
-  \item{dV}{variance of the observational noise.}
+  \item{dV}{variance of the observation noise.}
   \item{dW}{diagonal elements of the variance matrix of the system noise.}
+  \item{m0}{\eqn{m_0}{m0}, the expected value of the pre-sample state vector.}
+  \item{C0}{\eqn{C_0}{C0}, the variance matrix of the pre-sample state vector.}
 }
 \value{
   An object of class dlm representing a seasonal factor for a process

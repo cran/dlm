@@ -13,10 +13,10 @@ dlmModReg(X, addInt = TRUE, dV = 1, dW = rep(0, NCOL(X) + addInt),
 \arguments{
   \item{X}{the design matrix}
   \item{addInt}{logical: should an intercept be added?}
-  \item{dV}{variance of the observations.}
-  \item{dW}{variance of the system noise.}
-  \item{m0}{\eqn{m_0}{m0}}
-  \item{C0}{\eqn{C_0}{C0}}
+  \item{dV}{variance of the observation noise.}
+  \item{dW}{diagonal elements of the variance matrix of the system noise.}
+  \item{m0}{\eqn{m_0}{m0}, the expected value of the pre-sample state vector.}
+  \item{C0}{\eqn{C_0}{C0}, the variance matrix of the pre-sample state vector.}
 }
 \details{
   By setting \code{dW} equal to a nonzero vector one obtains a DLM
