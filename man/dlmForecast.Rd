@@ -19,7 +19,7 @@
   \item{nAhead}{number of steps ahead for which a forecast is
     requested.}
   \item{method}{\code{method="svd"} uses singular value decomposition
-    for the calculations. Corrently, only \code{method="plain"}
+    for the calculations. Currently, only \code{method="plain"}
     is implemented.}
   \item{sampleNew}{if \code{sampleNew=n} for an integer \code{n}, them a
     sample of size \code{n} from the forecast distribution of states and
@@ -42,7 +42,7 @@ The last two components are not present if \code{sampleNew=FALSE}.
 }
 \note{
   The function is currently entirely written in \R and is not
-  particularly fast.
+  particularly fast. Currently, only constant models are allowed. 
 }
 \examples{
 ## Comparing theoretical prediction intervals with sample quantiles

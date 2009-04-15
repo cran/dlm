@@ -43,6 +43,9 @@ dlmSmooth(y, \dots)
   \item{D.S}{Together with \code{U.S}, it gives the SVD of the variances
     of the smoothing errors.}
 }
+\section{Warning}{
+  The observation variance \code{V} in \code{mod} must be nonsingular.
+}
 \references{Zhang, Y. and Li, X.R., Fixed-interval smoothing algorithm
   based on singular value decomposition, \emph{Proceedings of the 1996
     IEEE International Conference on Control Applications}.}

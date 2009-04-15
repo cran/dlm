@@ -25,6 +25,9 @@ dlmLL(y, mod, debug=FALSE)
 \value{
   The function returns the negative of the loglikelihood.
 }
+\section{Warning}{
+  The observation variance \code{V} in \code{mod} must be nonsingular.
+}
 \references{Durbin and Koopman, Time series analysis by state space
   methods, Oxford University Press, 2001.}
 \author{Giovanni Petris \email{GPetris@uark.edu}}

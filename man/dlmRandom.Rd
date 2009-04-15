@@ -4,7 +4,7 @@
 \title{Random DLM}
 \description{
   Generate a random (constant or time-varying) object of class
-  \code{"dlm"}, together with states and observations from it.
+  \code{"dlm"}, along with states and observations from it.
 }
 \usage{
 dlmRandom(m, p, nobs = 0, JFF, JV, JGG, JW)
@@ -23,7 +23,7 @@ dlmRandom(m, p, nobs = 0, JFF, JV, JGG, JW)
   The function generates randomly the system and observation matrices and
   the variances of a DLM having the specified state and observation
   dimension. The system matrix \code{GG} is guaranteed to have
-  eigenvalues strictly less than one, which means that a constant DLM is
+  eigenvalues strictly less than one, which implies that a constant DLM is
   asymptotically stationary. The default behavior is to generate a
   constant DLM. If \code{JFF} is \code{TRUE} then a model for
   \code{nobs} observations in which all

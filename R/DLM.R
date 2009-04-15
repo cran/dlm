@@ -1481,105 +1481,77 @@ dlmSvd2var <- function(u, d)
 dlmForecast <- function(mod, nAhead=1, method=c("plain","svd"), sampleNew=FALSE) {
     method <- match.arg(method)
 
-    ## NEW
     if (is.dlmFiltered(mod)) {
         modFuture <- mod$mod
         lastObsIndex <- NROW(mod$m)
-        modFuture$C0 <- dlmSvd2var(mod$U.C[[lastObsIndex]], mod$D.C[lastObsIndex,])
+        modFuture$C0 <- with(mod, dlmSvd2var(U.C[[lastObsIndex]], D.C[lastObsIndex,]))
         if (is.ts(mod$m))
             modFuture$m0 <- window(mod$m, start=end(mod$m))
-        else
-            modFuture$m0 <- mod$m[lastObsIndex,]
+        else {
+            modFuture$m0 <- window(mod$m, start=lastObsIndex)
+            tsp(modFuture$m0) <- NULL
+        }
         mod <- modFuture
     }
-    ## END NEW
 
-    if (method == "svd") {
-        stop("Method \"svd\" is not available yet")
-        ans <- .Call("dlmForecast", mod, as.integer(nAhead), PACKAGE="dlm")
-        names(ans) <- c("a", "U.R", "D.R", "f", "U.Q", "D.Q")
-        ans$a <- ans$a[-1,,drop=FALSE]
-        ans$U.R <- ans$U.R[-1]
-        ans$D.R <- ans$D.R[-1,,drop=FALSE]
-        if ( sampleNew ) {
-            newStates <- vector("list", sampleNew)
-            newObs <- vector("list", sampleNew)
-            newS <- matrix(0, nAhead, p)
-            newO <- matrix(0, nAhead, m)
-            tmp <- La.svd(mod$V,nu=0)
-            Ut.V <- tmp$vt; D.V <- sqrt(tmp$d)
-            tmp <- La.svd(mod$W,nu=0)
-            Ut.W <- tmp$vt; D.W <- sqrt(tmp$d)
-            for (i in 1:sampleNew) {
-                newS[1,] <- ans$U.R[[1]] %*% rnorm(p, sd=ans$D.R[nAhead,]) + ans$a[1,]
-                newO[1,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[1,]
-                if ( nAhead > 1 )
-                    for (it in 2:nAhead) {
-                        newS[it,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + mod$GG %*% newS[it-1,] 
-                        newO[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[it,]            
-                    }
-                newStates[[i]] <- newS
-                newObs[[i]] <- newO
-            }      
-            ans$newStates <- newStates
-            ans$newObs <- newObs
-        }
-    } else {
-        ytsp <- tsp(mod$m0)
-        p <- length(mod$m0)
-        m <- nrow(mod$FF)
-        a <- rbind(mod$m0, matrix(0,nAhead,p))
-        R <- vector("list",nAhead+1)
-        R[[1]] <- mod$C0
-        f <- matrix(0,nAhead,m)
-        Q <- vector("list", nAhead)
-        for (it in 1:nAhead) {
-            a[it+1,] <- mod$GG %*% a[it,]
-            R[[it+1]] <- mod$GG %*% R[[it]] %*% t(mod$GG) + mod$W
-            f[it,] <- mod$FF %*% a[it+1,]
-            Q[[it]] <- mod$FF %*% R[[it+1]] %*% t(mod$FF) + mod$V
-        }
-        a <- a[-1,,drop=FALSE]
-        R <- R[-1]
-        if ( sampleNew ) {
-            newStates <- vector("list", sampleNew)
-            newObs <- vector("list", sampleNew)
-            newS <- matrix(0, nAhead, p)
-            newO <- matrix(0, nAhead, m)
-            tmp <- La.svd(mod$V,nu=0)
-            Ut.V <- tmp$vt; D.V <- sqrt(tmp$d)
-            tmp <- La.svd(mod$W,nu=0)
-            Ut.W <- tmp$vt; D.W <- sqrt(tmp$d)
-            for (i in 1:sampleNew) {
-                tmp <- La.svd(R[[1]],nu=0)
-                newS[1,] <- crossprod(tmp$vt, rnorm(p, sd=sqrt(tmp$d))) + a[1,]
-                newO[1,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[1,]
-                if ( nAhead > 1 )
-                    for (it in 2:nAhead) {
-                        newS[it,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + mod$GG %*% newS[it-1,] 
-                        newO[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[it,]            
-                    }
-                newStates[[i]] <- newS
-                newObs[[i]] <- newO
-            }      
-            if (!is.null(ytsp)) {
-                a <- ts(a, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
-                f <- ts(f, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
-                newStates <- lapply(newStates, function(x)
-                                    ts(x, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3]))
-                newObs <- lapply(newObs, function(x)
-                                    ts(x, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3]))
-            }
-            ans <- list(a=a, R=R, f=f, Q=Q, newStates=newStates, newObs=newObs)
-        } else {
-            if (!is.null(ytsp)) {
-                a <- ts(a, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
-                f <- ts(f, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
-            }
-            ans <- list(a=a, R=R, f=f, Q=Q)
-        }
+    if (! (is.null(mod$JFF) && is.null(mod$JV) && is.null(mod$JGG) && is.null(mod$JW)))
+        stop("dlmForecast only works with constant models")
+    
+    ytsp <- tsp(mod$m0)
+    p <- length(mod$m0)
+    m <- nrow(mod$FF)
+    a <- rbind(mod$m0, matrix(0,nAhead,p))
+    R <- vector("list",nAhead+1)
+    R[[1]] <- mod$C0
+    f <- matrix(0,nAhead,m)
+    Q <- vector("list", nAhead)
+    for (it in 1:nAhead) {
+        a[it+1,] <- mod$GG %*% a[it,]
+        R[[it+1]] <- mod$GG %*% R[[it]] %*% t(mod$GG) + mod$W
+        f[it,] <- mod$FF %*% a[it+1,]
+        Q[[it]] <- mod$FF %*% R[[it+1]] %*% t(mod$FF) + mod$V
     }
-
+    a <- a[-1,,drop=FALSE]
+    R <- R[-1]
+    if ( sampleNew ) {
+        newStates <- vector("list", sampleNew)
+        newObs <- vector("list", sampleNew)
+        newS <- matrix(0, nAhead, p)
+        newO <- matrix(0, nAhead, m)
+        tmp <- La.svd(mod$V,nu=0)
+        Ut.V <- tmp$vt; D.V <- sqrt(tmp$d)
+        tmp <- La.svd(mod$W,nu=0)
+        Ut.W <- tmp$vt; D.W <- sqrt(tmp$d)
+        for (i in 1:sampleNew) {
+            tmp <- La.svd(R[[1]],nu=0)
+            newS[1,] <- crossprod(tmp$vt, rnorm(p, sd=sqrt(tmp$d))) + a[1,]
+            newO[1,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[1,]
+            if ( nAhead > 1 )
+                for (it in 2:nAhead) {
+                    newS[it,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + mod$GG %*% newS[it-1,] 
+                    newO[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[it,]            
+                }
+            newStates[[i]] <- newS
+            newObs[[i]] <- newO
+        }      
+        if (!is.null(ytsp)) {
+            a <- ts(a, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
+            f <- ts(f, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
+            newStates <- lapply(newStates, function(x)
+                                ts(x, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3]))
+            newObs <- lapply(newObs, function(x)
+                             ts(x, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3]))
+        }
+        ans <- list(a=a, R=R, f=f, Q=Q, newStates=newStates, newObs=newObs)
+    } else {
+        if (!is.null(ytsp)) {
+            a <- ts(a, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
+            f <- ts(f, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
+        }
+        ans <- list(a=a, R=R, f=f, Q=Q)
+    }
+    
+    
     return(ans)
 }
 
@@ -1990,12 +1962,10 @@ dropFirst <- function(x)
 ######
 ###### Gibbs sampler for "d-inverse-gamma" model
 ######
-## dlmGibbsDIG <- function(y, mod, a, b, alpha, beta, shape.y, rate.y,
-##                         shape.theta, rate.theta, n.sample = 1,
-##                         thin = 0, ind, save.states = TRUE)
 dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
                         shape.theta, rate.theta, n.sample = 1,
-                        thin = 0, ind, save.states = TRUE)
+                        thin = 0, ind, save.states = TRUE,
+                        progressBar = interactive())
 ##################################################################################
 ##################################################################################
 ### Gibbs sampler for the 'd-inverse-gamma' model                              ###
@@ -2023,10 +1993,12 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
 ###           Useful when some of the system variances are zero.               ###
 ### save.states : if TRUE, the generated states will be returned together      ###
 ###           with the generated parameter values.                             ###
+### progressBar : if TRUE, a text progress bar will be displayed               ###
+###           during execution                                                 ###
 ###                                                                            ###
 ### Value:                                                                     ###
 ### A list with components 'dV', 'dW', 'theta' (only if 'save.states' is       ###
-###  TRUE). 'dV' contains the generated observation variances, 'dW' the        ###
+### TRUE). 'dV' contains the generated observation variances, 'dW' the         ###
 ### generated system variances, 'theta' the generated states.                  ###
 ##################################################################################
 ##################################################################################    
@@ -2068,10 +2040,10 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
     else
         stop(msg7)
     ## check hyperpriors for precision of 'y'
-    if (is.null(a.y))
-        if (is.null(shape.y)) stop(msg1)
+    if ( !hasArg(a.y) )
+        if ( !hasArg(shape.y) ) stop(msg1)
         else
-            if (is.null(rate.y)) stop(msg1)
+            if ( !hasArg(rate.y) ) stop(msg1)
             else
             {
                 ## check length of shape.y and rate.y 
@@ -2079,7 +2051,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
                     warning(msg2)
             }
     else
-        if (is.null(b.y)) stop(msg1)
+        if ( !hasArg(b.y) ) stop(msg1)
         else
         {
             if (!all(c(length(a.y), length(b.y)) == 1))
@@ -2088,10 +2060,10 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
             rate.y <- a.y / b.y
         }
     ## check hyperpriors for precision(s) of 'theta'
-    if (is.null(a.theta))
-        if (is.null(shape.theta)) stop(msg4)
+    if ( !hasArg(a.theta) )
+        if ( !hasArg(shape.theta) ) stop(msg4)
         else
-            if (is.null(rate.theta)) stop(msg4)
+            if ( !hasArg(rate.theta) ) stop(msg4)
             else
             {
                 ## check length of shape.theta and rate.theta 
@@ -2099,7 +2071,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
                     warning(msg5)
             }
     else
-        if (is.null(b.theta)) stop(msg4)
+        if ( !hasArg(b.theta) ) stop(msg4)
         else
         {
             if (!all(c(length(a.theta), length(b.theta)) %in% c(1,p)))
@@ -2117,8 +2089,10 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
     gibbsV <- vector("numeric", n.sample)
     gibbsW <- matrix(0, nrow = n.sample, ncol = p)
     it.save <- 0
+    if (progressBar) pb <- txtProgressBar(0, mcmc, style = 3)
     for (it in 1:mcmc)
     {
+        if (progressBar) setTxtProgressBar(pb, it)
         ## generate states - FFBS
         modFilt <- dlmFilter(y, mod, simplify=TRUE)
         theta[] <- dlmBSample(modFilt)
@@ -2146,8 +2120,10 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
         }
     }
     colnames(gibbsW) <- paste("W", ind, sep = '.')
+    if (progressBar) close(pb)
     if ( save.states )
-        return(list(dV = gibbsV, dW = gibbsW, theta = gibbsTheta))
+        return(list(dV = gibbsV, dW = gibbsW,
+                    theta = gibbsTheta[, order(perm), , drop = FALSE]))
     else
         return(list(dV = gibbsV, dW = gibbsW))
 }

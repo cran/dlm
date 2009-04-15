@@ -41,7 +41,7 @@ rwishart(df, p = nrow(SqrtSigma), Sigma, SqrtSigma = diag(p))
 }
 \references{Press (1982). Applied multivariate analysis.}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
-\note{From a suggestion of B.Venables, posted on S-news}
+\note{From a suggestion by B.Venables, posted on S-news}
 \section{Warning}{The function only works for an integer number 
 of degrees of freedom.}
  

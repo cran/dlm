@@ -8,7 +8,8 @@
 \usage{
 dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
             shape.theta, rate.theta, n.sample = 1,
-            thin = 0, ind, save.states = TRUE)
+            thin = 0, ind, save.states = TRUE,
+            progressBar = interactive())
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -25,7 +26,8 @@ dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
   \item{n.sample}{requested number of Gibbs iterations}
   \item{thin}{discard \code{thin} iterations for every saved iteration}
   \item{ind}{indicator of the system variances that need to be estimated}
-  \item{save.states}{should the simulated states be included in the output}
+  \item{save.states}{should the simulated states be included in the output?}
+  \item{progressBar}{should a text progress bar be displayed during execution?}
 }
 \details{
   The \emph{d-inverse-gamma} model is a constant univariate DLM with unknown

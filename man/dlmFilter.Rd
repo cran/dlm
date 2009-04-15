@@ -55,6 +55,9 @@ dlmFilter(y, mod, debug = FALSE, simplify = FALSE)
   \item{f}{Time series (or matrix) of one-step-ahead forecast of the
     observations.}
 }
+\section{Warning}{
+  The observation variance \code{V} in \code{mod} must be nonsingular.
+}
 \references{Zhang, Y. and Li, X.R., Fixed-interval smoothing algorithm
   based on singular value decomposition, \emph{Proceedings of the 1996
     IEEE International Conference on Control Applications}.}
