@@ -1,0 +1,23 @@
+citHeader("To cite package 'dlm' in publications use:")
+
+desc <- packageDescription("dlm")
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", desc$Date)
+vers <- paste("R package version", desc$Version)
+
+citEntry(entry = "Manual",
+         title = "dlm: Bayesian and Likelihood Analysis of Dynamic Linear Models",
+         author = "Giovanni Petris",
+         year = year,
+         note = vers,
+         textVersion = paste("Giovanni Petris (", year,
+         "). dlm: Bayesian and Likelihood Analysis of Dynamic Linear Models. ",
+         vers, ".", sep = ""))
+
+citEntry(entry = "Book",
+         title = "Dynamic Linear Models with R",
+         author = personList(as.person("Giovanni Petris"),
+         as.person("Sonia Petrone"),
+         as.person("Patrizia Campagnoli")),
+         year = 2009,
+         series = "useR!",
+         publisher = "Springer-Verlag, New York")

@@ -27,7 +27,7 @@ rwishart(df, p = nrow(SqrtSigma), Sigma, SqrtSigma = diag(p))
   The mean of the Wishart distribution is \eqn{n\Sigma}{n Sigma} and the
   variance of an entry is
   \deqn{\mathrm{Var}(W_{ij}) = n (\Sigma_{ij}^2 +
-    \Sigma{ii}\Sigma_{jj})}{%
+    \Sigma_{ii}\Sigma_{jj})}{%
     Var(W[i,j]) = n (Sigma[i,j]^2 + Sigma[i,i] Sigma[j,j])}
   The matrix parameter, which should be a positive definite symmetric
   matrix, can be specified via either the argument Sigma or

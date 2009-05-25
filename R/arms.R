@@ -75,7 +75,7 @@ function (y.start, myldens, indFunc, n.sample, ...)
 #     if (!(indFunc(y.start, ...) > 0)) 
 #         stop("starting point not in the support")
     if (dim == 1) {
-        bounds <- y.start + convex.bounds(y.start, dir = 1, indFunc, 
+        bounds <- y.start + convex.bounds(y.start, dir = 1, indFunc = indFunc, 
             ...)
         if ( diff(bounds) < 1e-7 )
             y.sample <- rep(y.start, n.sample)
@@ -91,7 +91,7 @@ function (y.start, myldens, indFunc, n.sample, ...)
             ## pick a direction at random 
             dir <- rnorm(dim)
             ## look for boundaries of support in the selected direction
-            bounds <- convex.bounds(y.sample[k, ], dir, indFunc, 
+            bounds <- convex.bounds(y.sample[k, ], dir, indFunc = indFunc, 
                 ...)
             if ( diff(bounds) < 1e-7 )
                 y.sample[k + 1, ] <- y.sample[k, ]
