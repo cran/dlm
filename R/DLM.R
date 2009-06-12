@@ -2028,7 +2028,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
         p <- length(ind)
     }
     else {
-        ind <- 1:r # to name output
+        perm <- ind <- 1 : r
         p <- r
     }
     nobs <- NROW(y)

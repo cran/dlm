@@ -15,14 +15,14 @@ dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
 \arguments{
   \item{y}{data vector or univariate time series}
   \item{mod}{a dlm for univariate observations}
-  \item{a.y}{prior mean of observation variance}
-  \item{b.y}{prior variance of observation variance}
-  \item{a.theta}{prior mean of system variances}
-  \item{b.theta}{prior variance of system variances}
-  \item{shape.y}{shape parameter of the prior of observation variance}
-  \item{rate.y}{rate parameter of the prior of observation variance}
-  \item{shape.theta}{shape parameter of the prior of system variances}
-  \item{rate.theta}{rate parameter of the prior of system variances}
+  \item{a.y}{prior mean of observation precision}
+  \item{b.y}{prior variance of observation precision}
+  \item{a.theta}{prior mean of system precisions (recycled, if needed)}
+  \item{b.theta}{prior variance of system precisions (recycled, if needed)}
+  \item{shape.y}{shape parameter of the prior of observation precision}
+  \item{rate.y}{rate parameter of the prior of observation precision}
+  \item{shape.theta}{shape parameter of the prior of system precisions (recycled, if needed)}
+  \item{rate.theta}{rate parameter of the prior of system precisions (recycled, if needed)}
   \item{n.sample}{requested number of Gibbs iterations}
   \item{thin}{discard \code{thin} iterations for every saved iteration}
   \item{ind}{indicator of the system variances that need to be estimated}
