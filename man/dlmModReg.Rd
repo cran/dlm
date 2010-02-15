@@ -27,9 +27,10 @@ dlmModReg(X, addInt = TRUE, dV = 1, dW = rep(0, NCOL(X) + addInt),
 \value{
   An object of class dlm representing the specified regression model.
 }
-\references{West and Harrison, Bayesian forecasting and dynamic models
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). West and Harrison, Bayesian forecasting and dynamic models
   (2nd ed.), Springer, 1997.}
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModARMA}}, \code{\link{dlmModPoly}},
   \code{\link{dlmModSeas}}}

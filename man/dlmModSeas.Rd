@@ -20,9 +20,10 @@ dlmModSeas(frequency, dV = 1, dW = c(1, rep(0, frequency - 2)),
   An object of class dlm representing a seasonal factor for a process
   with \code{frequency} seasons.
 }
-\references{Harvey, Forecasting, structural time series models and the
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). Harvey, Forecasting, structural time series models and the
   Kalman filter, Cambridge University Press, 1989.}
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModARMA}}, \code{\link{dlmModPoly}},
   \code{\link{dlmModReg}}, and \code{\link{dlmModTrig}} for the Fourier

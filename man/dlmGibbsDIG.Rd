@@ -50,7 +50,9 @@ dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
     system variance.}
   \item{theta}{simulated values of the state vectors.}
 }
-
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).
+}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \examples{

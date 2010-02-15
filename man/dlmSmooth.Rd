@@ -48,8 +48,10 @@ dlmSmooth(y, \dots)
 }
 \references{Zhang, Y. and Li, X.R., Fixed-interval smoothing algorithm
   based on singular value decomposition, \emph{Proceedings of the 1996
-    IEEE International Conference on Control Applications}.}
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+    IEEE International Conference on Control Applications}. Petris,
+  Petrone, and Campagnoli, Dynamic Linear Models with 
+  R, Springer (2009). }
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{See \code{\link{dlm}} for a description of dlm objects,
   \code{\link{dlmSvd2var}} to obtain a variance matrix from its SVD,

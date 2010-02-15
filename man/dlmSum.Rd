@@ -20,7 +20,9 @@ x \%+\% y
   An object of class \code{dlm}, representing the outer sum of the
   arguments.
 }
-
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).
+}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \examples{

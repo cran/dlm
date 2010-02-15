@@ -32,6 +32,9 @@ dlmMLE(y, parm, build, method = "L-BFGS-B", ..., debug = FALSE)
 \value{
   The function \code{dlmMLE} returns the value returned by \code{optim}.
 }
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).
+}
 \section{Warning}{
   The \code{build} argument must return a dlm with nonsingular
   observation variance \code{V}.

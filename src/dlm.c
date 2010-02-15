@@ -1,6 +1,8 @@
 # include <stdio.h>
 # include <R.h>
 # include <Rinternals.h>
+# include <Rmath.h>
+
 
 static double sqrarg;
 # define SQR(x) ((sqrarg = (x)) == 0.0 ? 0.0 : sqrarg*sqrarg)
@@ -59,7 +61,7 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 
     SEXP val;
     int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
-	numNA, *whereNA, numGood, *good;
+      numNA, *whereNA, numGood, *good, warn;
     int stvFF=INTEGER(tvFF)[0], stvV=INTEGER(tvV)[0], stvGG=INTEGER(tvGG)[0], 
 	stvW=INTEGER(tvW)[0], stvFV, *sJFF, *sJV, *sJGG, *sJW, nrJFF, nrJV, nrJGG, nrJW;
     double *sy=REAL(y), *sm0, *sFF, *sV, *sGG, *sW, *sX, *Ux,  
@@ -67,9 +69,10 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv, ll=0.0;
     double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
-	*sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP;
+      *sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP, eps;
     char la_jobz='S';
 
+    eps = R_pow(DBL_EPSILON, 0.3);
     PROTECT(val = allocVector(REALSXP, 1));
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
     p = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[1];
@@ -173,15 +176,22 @@ SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 			 la_work, &la_lwork, la_iwork, &la_info);
 	if (la_info != 0)
 	    error("error code %d from Lapack routine dgesdd", la_info);
+	warn = 0;
 	for (i = 0; i < m; i++) {
 	    tmp = sqrt( la_s[i] );
+	    if (tmp < eps) {
+		tmp = eps;
+		warn = 1;
+	    }
 	    tmp1 = 1 / tmp;
-	    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
 	    for (j = 0; j<m; j++) {
 		sqrtV[i + j * m] = tmp * la_vt[i + j * max_m_p];
 		sqrtVinv[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
 	    }
 	}
+	if (warn)
+	    warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular");
+
 	if (!stvFF) {
 	    /* compute also tF_Vinv, time-invariant */
 	    for (i = 0; i < m; i++) {
@@ -713,15 +723,16 @@ SEXP dlmLL0(SEXP y, SEXP mod)
 
     SEXP val;
     int i, j, k, l, p, m, n, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
-	numNA, *whereNA, numGood, *good;
+      numNA, *whereNA, numGood, *good, warn;
     double *sy=REAL(y), *sm0, *sFF, *sGG, *Ux,  
         *Dx, *sqrtV, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv, ll=0.0;
     double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
-	*sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP;
+      *sqrtVTMP, *sqrtVinvTMP, *tF_VinvTMP, eps;
     char la_jobz='S';
 
+    eps = R_pow(DBL_EPSILON, 0.3);
     PROTECT(val = allocVector(REALSXP, 1));
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
     p = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[1];
@@ -829,15 +840,21 @@ SEXP dlmLL0(SEXP y, SEXP mod)
                      la_work, &la_lwork, la_iwork, &la_info);
     if (la_info != 0)
         error("error code %d from Lapack routine dgesdd", la_info);
+    warn = 0;
     for (i = 0; i < m; i++) {
         tmp = sqrt( la_s[i] );
+	if (tmp < eps) {
+	    tmp = eps;
+	    warn = 1;
+	}
         tmp1 = 1 / tmp;
-        tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
         for (j = 0; j<m; j++) {
             sqrtV[i + j * m] = tmp * la_vt[i + j * max_m_p];
             sqrtVinv[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
         }
     }
+    if (warn)
+	warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular");
     for (i = 0; i < m; i++) {
         for (j = 0; j < i; j++) {
             tmp = 0.0;
@@ -1260,7 +1277,7 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 
     SEXP val, mR, UxR, DxR, aR, Ux_priorR, Dx_priorR, fR;
     int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
-	numNA, *whereNA, numGood, *good;
+	numNA, *whereNA, numGood, *good, warn;
     int stvFF=INTEGER(tvFF)[0], stvV=INTEGER(tvV)[0], stvGG=INTEGER(tvGG)[0], 
 	stvW=INTEGER(tvW)[0], stvFV, *sJFF, *sJV, *sJGG, *sJW, nrJFF, nrJV, nrJGG, nrJW;
     double *sy=REAL(y), *sm0, *sFF, *sV, *sGG, *sW, *sX, *Ux,  
@@ -1268,9 +1285,10 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv;
     double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
-	*sqrtVinvTMP, *tF_VinvTMP;
+	*sqrtVinvTMP, *tF_VinvTMP, eps;
     char la_jobz='S';
 
+    eps = R_pow(DBL_EPSILON, 0.3);
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
     p = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[1];
     max_m_p = m > p ? m : p;
@@ -1381,15 +1399,21 @@ SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)
 			 la_work, &la_lwork, la_iwork, &la_info);
 	if (la_info != 0)
 	    error("error code %d from Lapack routine dgesdd", la_info);
+	warn = 0;
 	for (i = 0; i < m; i++) {
 	    tmp = sqrt( la_s[i] );
-	    tmp1 = 1 / tmp;
-	    tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
+	    if (tmp < eps) {
+		tmp = eps;
+		warn = 1;
+	    }
+ 	    tmp1 = 1 / tmp;
 	    for (j = 0; j<m; j++) {
 		sqrtV[i + j * m] = tmp * la_vt[i + j * max_m_p];
 		sqrtVinv[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
 	    }
 	}
+	if (warn)
+	    warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular");
 	if (!stvFF) {
 	    /* compute also tF_Vinv, time-invariant */
 	    for (i = 0; i < m; i++) {
@@ -1884,15 +1908,16 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
 
     SEXP val, mR, UxR, DxR, aR, Ux_priorR, Dx_priorR, fR;
     int i, j, k, l, p, m, n, nPlus, t, max_m_p, la_m, la_n, la_info=0, la_lwork, *la_iwork,
-	numNA, *whereNA, numGood, *good;
+	numNA, *whereNA, numGood, *good, warn;
     double *sy=REAL(y), *sm0, *sFF, *sGG, *Ux,  
         *Dx, *sqrtW, 
         *sqrtVinv, *a, *Ux_prior, *Dx_prior, *f, *Uy, *Dy,
         *e, *tF_Vinv;
     double tmp, tmp1, *tmpMat, *tmpMat2, *la_s, *la_u, *la_vt, *la_work,
-	*sqrtVinvTMP, *tF_VinvTMP;
+        *sqrtVinvTMP, *tF_VinvTMP, eps;
     char la_jobz='S';
 
+    eps = R_pow(DBL_EPSILON, 0.3);
     m = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[0];
     p = INTEGER(getAttrib( VECTOR_ELT(mod,2), R_DimSymbol ))[1];
     max_m_p = m > p ? m : p;
@@ -2006,13 +2031,20 @@ SEXP dlmFilter0(SEXP y, SEXP mod)
                      la_work, &la_lwork, la_iwork, &la_info);
     if (la_info != 0)
         error("error code %d from Lapack routine dgesdd", la_info);
+    warn = 0;
     for (i = 0; i < m; i++) {
-        tmp = sqrt( la_s[i] );
+	tmp = sqrt( la_s[i] );
+	if (tmp < eps) {
+	    tmp = eps;
+	    warn = 1;
+	}
         tmp1 = 1 / tmp;
-        tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0;
-        for (j = 0; j<m; j++) 
+        /* tmp1 = R_FINITE(tmp1) ? tmp1 : 0.0; */
+        for (j = 0; j < m; j++) 
             sqrtVinv[i + j * m] = tmp1 * la_vt[i + j * max_m_p];
     }
+    if (warn)
+	warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular");
     for (i = 0; i < m; i++) {
         for (j = 0; j < i; j++) {
             tmp = 0.0;

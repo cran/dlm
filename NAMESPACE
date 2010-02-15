@@ -1,7 +1,7 @@
 useDynLib(dlm)
 exportPattern("^dlm")
 export(arms, ARtransPars, as.dlm, bdiag, convex.bounds, is.dlm,
-       rwishart, mcmcMean, mcmcSD, ergMean, "%+%", dropFirst,
+       rwishart, mcmcMean, mcmcMeans, mcmcSD, ergMean, "%+%", dropFirst,
        FF, "FF<-", V, "V<-", GG, "GG<-", W, "W<-", C0, "C0<-", m0, "m0<-",
        JFF, "JFF<-", JV, "JV<-", JGG, "JGG<-", JW, "JW<-", X, "X<-")
 importFrom(stats, tsdiag)

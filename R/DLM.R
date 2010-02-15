@@ -29,11 +29,11 @@ bdiag <- function(...)
     iuse <- as.vector(unlist(iuse))
     out[iuse] <- unlist(x)
     return(out)
-} 
+}
 
 ###### From R^p to the AR parameters of a stationary AR(p) (univariate)
 ###### For the multivariate analog, see Ansley and Kohn, 1986,
-###### J. Statist. Comput. Simul. 24. 
+###### J. Statist. Comput. Simul. 24.
 ARtransPars <- function(raw) {
     p <- length(raw)
     return(.Call("ARtranspar", p, as.double(raw), PACKAGE="dlm"))
@@ -46,7 +46,7 @@ dlm <- function(...) {
     else
         x <- list(...)
     ## required components
-    nm <- c("m0", "C0", "FF", "V", "GG", "W") 
+    nm <- c("m0", "C0", "FF", "V", "GG", "W")
     nmInd <- match(nm, names(x))
     if (any(is.na(nmInd)))
         stop(paste("Component(s)", paste(nm[is.na(nmInd)], collapse=", "),
@@ -80,8 +80,8 @@ dlm <- function(...) {
         stop("C0 is not a valid variance matrix")
     if (any( c(is.na(x$m0), is.na(x$C0))))
         stop("Missing values are not allowed in components m0 and C0")
-    ## extra components for time-varying dlm 
-    nm1 <- c("JFF", "JV", "JGG", "JW") 
+    ## extra components for time-varying dlm
+    nm1 <- c("JFF", "JV", "JGG", "JW")
     nm1Ind <- match(nm1, names(x))
     if (all(is.na(nm1Ind))) {
         if (!(all.equal(x$V, t(x$V)) && all(eigen(x$V)$values >= 0)))
@@ -189,7 +189,7 @@ FF.dlm <- function(x)
     x$FF <- value
     return(x)
 }
-             
+
 GG.dlm <- function(x)
 {
     if (!is.dlm(x))
@@ -561,7 +561,7 @@ dlmModTrig <- function(s, q, om, tau, dV=1, dW=0, m0, C0)
         if ( q > 1 ) {
             h <- vector("list",q)
             h[[1]] <- H1
-            for ( i in 2:q ) 
+            for ( i in 2:q )
                 h[[i]] <- h[[i-1]] %*% H1
             GG <- bdiag(h)
         } else {
@@ -611,13 +611,13 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
             if ( length(m0) != k )
                 stop("Incompatible dimensions of arguments")
         }
-        else 
+        else
             m0 <- rep(0,k)
         if (hasArg("C0")) {
             if ( !( nrow(C0) == k && ncol(C0) == k ))
                 stop("Incompatible dimensions of arguments")
         }
-        else 
+        else
             C0 <- 1e7*diag(nrow=k)
         FF <- matrix(0,m,k)
         FF[row(FF) == col(FF)] <- 1
@@ -639,7 +639,7 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
                     JGG = NULL,
                     JW = NULL)
     }
-    else 
+    else
     { ## univariate
         r <- max(p <- length(ar), (q <- length(ma)) + 1)
         if (hasArg("dV")) {
@@ -652,13 +652,13 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
             if ( length(m0) != r )
                 stop("Incompatible dimensions of arguments")
         }
-        else 
+        else
             m0 <- rep(0,r)
         if (hasArg("C0")) {
             if ( !( nrow(C0) == r && ncol(C0) == r ))
                 stop("Incompatible dimensions of arguments")
         }
-        else 
+        else
             C0 <- 1e7*diag(nrow=r)
         GG <- matrix(0,r,r)
         if ( p > 0 ) GG[ 1:p, 1 ] <- ar
@@ -765,7 +765,7 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
 
 
 ###### Outer sum of DLMs
-"dlmSum" <- function(...) 
+"dlmSum" <- function(...)
 {
     if ( (narg <- nargs()) == 1  ) {
         if ( is.dlm(...) )
@@ -778,7 +778,7 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
         args <- list(...)
         if ( !all(sapply(args, is.dlm)) )
             stop("Arguments must be \"dlm\" objects")
-        if ( narg > 2 ) 
+        if ( narg > 2 )
             return( dlmSum(args[[1]], do.call("dlmSum", args[-1])))
         ## now we are in the case narg == 2
         if ((x1 <- !is.null(args[[1]]$X)) | (x2 <- !is.null(args[[2]]$X)))
@@ -790,7 +790,7 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
                         V = bdiag(list(args[[1]]$V, args[[2]]$V)),
                         GG = bdiag(list(args[[1]]$GG, args[[2]]$GG)),
                         W = bdiag(list(args[[1]]$W, args[[2]]$W)),
-                        JFF = NULL, JV = NULL, JGG = NULL, JW = NULL) 
+                        JFF = NULL, JV = NULL, JGG = NULL, JW = NULL)
         class(mod) <- "dlm"
         return(mod)
     }
@@ -823,7 +823,7 @@ dlmLL <- function(y, mod, debug=FALSE)
     ## Note: V must be nonsingular
     ## The C code relies on the order of the elements in 'mod'
     ## mod = list(m0, C0, FF, V, GG, W)
-    if (!debug) {
+     if (!debug) {
         storage.mode(y) <- "double"
         matchnames <- match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))
         for (i in matchnames)
@@ -871,6 +871,7 @@ dlmLL <- function(y, mod, debug=FALSE)
         }
     }
     else {
+        eps <- .Machine$double.eps^.3
         y <- as.matrix(y)
         n <- nrow(y)
         ll <- 0 # negative loglikelihood
@@ -908,21 +909,25 @@ dlmLL <- function(y, mod, debug=FALSE)
         if ( !tvV ) {
             tmp <- La.svd(mod$V,nu=0)
             Dv <- sqrt(tmp$d)
-            Dv.inv <- 1/Dv; Dv.inv[abs(Dv.inv)==Inf] <- 0
-            sqrtVinv <- Dv.inv * tmp$vt
-            sqrtV <- Dv * tmp$vt # t()%*%() = V 
-            if ( !tvFF ) 
+            if (any(Dv < eps)) {
+              Dv <- pmax(Dv, eps)
+              warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular")
+            }
+            Dv.inv <- 1/Dv
+            sqrtVinv <- Dv.inv * tmp$vt # t() %*% () = V^{-1}
+            sqrtV <- Dv * tmp$vt # t()%*%() = V
+            if ( !tvFF )
                 tF.Vinv <- t(mod$FF) %*% crossprod(sqrtVinv)
         }
         if ( !tvW ) {
             svdW <- La.svd(mod$W,nu=0)
-            sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W 
+            sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W
         }
         tmp <- La.svd(mod$C0,nu=0)
         Ux <- t(tmp$vt); Dx <- sqrt(tmp$d)
         for (i in seq(length = n)) {
             ## set time-varying matrices
-            if ( tvFF ) 
+            if ( tvFF )
                 mod$FF[mod$JFF[,-3,drop=FALSE]] <- mod$X[i,mod$JFF[,3]]
             if ( tvV ) {
                 mod$V[mod$JV[,-3,drop=FALSE]] <- mod$X[i,mod$JV[,3]]
@@ -930,19 +935,19 @@ dlmLL <- function(y, mod, debug=FALSE)
                 Dv <- sqrt(tmp$d)
                 Dv.inv <- 1/Dv; Dv.inv[abs(Dv.inv)==Inf] <- 0
                 sqrtVinv <- Dv.inv * tmp$vt
-                sqrtV <- sqrt(tmp$d) * tmp$vt # t()%*%() = V 
+                sqrtV <- sqrt(tmp$d) * tmp$vt # t()%*%() = V
             }
-            if ( tvGG ) 
+            if ( tvGG )
                 mod$GG[mod$JGG[,-3,drop=FALSE]] <- mod$X[i,mod$JGG[,3]]
             if ( tvW ) {
                 mod$W[mod$JW[,-3,drop=FALSE]] <- mod$X[i,mod$JW[,3]]
                 svdW <- La.svd(mod$W,nu=0)
-                sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W 
+                sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W
             }
-            if ( tvFV ) 
+            if ( tvFV )
                 tF.Vinv <- t(mod$FF) %*% crossprod(sqrtVinv)
 
-            if (!any(whereNA <- is.na(y[i, ]))) { ## No missing values       
+            if (!any(whereNA <- is.na(y[i, ]))) { ## No missing values
 
                 ## prior
                 a <- mod$GG %*% mod$m0
@@ -958,9 +963,9 @@ dlmLL <- function(y, mod, debug=FALSE)
                 D.inv <- 1/Dx.prior
                 D.inv[abs(D.inv)==Inf] <- 0
                 tmp <- La.svd(rbind(sqrtVinv%*%mod$FF%*%Ux.prior,
-                                    diag(x=D.inv,nrow=length(D.inv))), nu=0) 
+                                    diag(x=D.inv,nrow=length(D.inv))), nu=0)
                 Ux <- Ux.prior %*% t(tmp$vt)
-                Dx <- 1/tmp$d 
+                Dx <- 1/tmp$d
                 Dx[abs(Dx)==Inf] <- 0
                 e <- as.matrix(y[i,]-f)
                 mod$m0 <- a + crossprod(Dx*t(Ux)) %*%
@@ -976,7 +981,7 @@ dlmLL <- function(y, mod, debug=FALSE)
                     tmp <- La.svd(rbind( Dx*t(mod$GG%*%Ux), sqrtW ), nu=0)
                     Ux <- t(tmp$vt)
                     Dx <- tmp$d
-                
+
                 } else { ## Some components missing
 
                     good <- !whereNA
@@ -985,7 +990,7 @@ dlmLL <- function(y, mod, debug=FALSE)
                     Dv.inv <- 1/Dv; Dv.inv[abs(Dv.inv)==Inf] <- 0
                     sqrtVinvTMP <- Dv.inv * tmp$vt
                     tF.VinvTMP <- t(mod$FF[good,,drop=FALSE]) %*% crossprod(sqrtVinvTMP)
-                    sqrtVTMP <- Dv * tmp$vt 
+                    sqrtVTMP <- Dv * tmp$vt
                     ## prior
                     a <- mod$GG %*% mod$m0
                     tmp <- La.svd(rbind( Dx*t(mod$GG%*%Ux), sqrtW ), nu=0)
@@ -1000,9 +1005,9 @@ dlmLL <- function(y, mod, debug=FALSE)
                     D.inv <- 1/Dx.prior
                     D.inv[abs(D.inv)==Inf] <- 0
                     tmp <- La.svd(rbind(sqrtVinvTMP%*%mod$FF[good,,drop=FALSE]%*%Ux.prior,
-                                        diag(x=D.inv,nrow=length(D.inv))), nu=0) 
+                                        diag(x=D.inv,nrow=length(D.inv))), nu=0)
                     Ux <- Ux.prior %*% t(tmp$vt)
-                    Dx <- 1/tmp$d 
+                    Dx <- 1/tmp$d
                     Dx[abs(Dx)==Inf] <- 0
                     e <- as.matrix(y[i,good]-f)
                     mod$m0 <- a + crossprod(Dx*t(Ux)) %*%
@@ -1032,7 +1037,9 @@ dlmLL <- function(y, mod, debug=FALSE)
 
 dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
 {
-    ## Note: V must be nonsingular
+    ## Note: V must be nonsingular. It will be forced to be so,
+    ## with a warning, otherwise (time-invariant case only).
+    eps <- .Machine$double.eps^.3
     mod1 <- mod
     yAttr <- attributes(y)
     ytsp <- tsp(y)
@@ -1044,6 +1051,8 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
         matchnames <- match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))
         for (i in matchnames)
             storage.mode(mod[[i]]) <- "double"
+        if ("X" %in% names(mod))
+          storage.mode(mod$X) <- "double"
         ## define flags for time-varying components
         if (is.null(mod$JFF))
             tvFF <- FALSE
@@ -1080,10 +1089,10 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
         if (any(c(tvFF,tvV,tvGG,tvW))) {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W",
                                "JFF", "JV", "JGG", "JW", "X"), names(mod))]
-            ans <- .Call("dlmFilter", y, mod, tvFF, tvV, tvGG, tvW, PACKAGE="dlm")
+            ans <- .Call("dlmFilter", y, mod, tvFF, tvV, tvGG, tvW, PACKAGE = "dlm")
         } else {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))]
-            ans <- .Call("dlmFilter0", y, mod, PACKAGE="dlm")
+            ans <- .Call("dlmFilter0", y, mod, PACKAGE = "dlm")
         }
         names(ans) <- c("m", "U.C", "D.C", "a", "U.R", "D.R", "f")
     }
@@ -1129,21 +1138,25 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
         if ( !tvV ) {
             tmp <- La.svd(mod$V,nu=0)
             Uv <- t(tmp$vt); Dv <- sqrt(tmp$d)
-            Dv.inv <- 1/Dv; Dv.inv[abs(Dv.inv)==Inf] <- 0
+            if (any(Dv < eps)) {
+              Dv <- pmax(Dv, eps)
+              warning("a numerically singular 'V' has been slightly perturbed to make it nonsingular")
+            }
+            Dv.inv <- 1/Dv
             sqrtVinv <- Dv.inv * tmp$vt # t() %*% () = V^{-1}
-            if ( !tvFF ) 
+            if ( !tvFF )
                 tF.Vinv <- t(mod$FF) %*% crossprod(sqrtVinv)
         }
         if ( !tvW ) {
             svdW <- La.svd(mod$W,nu=0)
-            sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W 
+            sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W
         }
         tmp <- La.svd(mod$C0,nu=0)
         U.C[[1]] <- t(tmp$vt)
         D.C[1,] <- sqrt(tmp$d)
         for (i in seq(length=nrow(y))) {
             ## set time-varying matrices
-            if ( tvFF ) 
+            if ( tvFF )
                 mod$FF[mod$JFF[,-3,drop=FALSE]] <- mod$X[i,mod$JFF[,3]]
             if ( tvV ) {
                 mod$V[mod$JV[,-3,drop=FALSE]] <- mod$X[i,mod$JV[,3]]
@@ -1152,17 +1165,17 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
                 Dv.inv <- 1/Dv; Dv.inv[abs(Dv.inv)==Inf] <- 0
                 sqrtVinv <- Dv.inv * tmp$vt
             }
-            if ( tvGG ) 
+            if ( tvGG )
                 mod$GG[mod$JGG[,-3,drop=FALSE]] <- mod$X[i,mod$JGG[,3]]
             if ( tvW ) {
                 mod$W[mod$JW[,-3,drop=FALSE]] <- mod$X[i,mod$JW[,3]]
                 svdW <- La.svd(mod$W,nu=0)
-                sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W 
+                sqrtW <- sqrt(svdW$d) * svdW$vt # t()%*%() = W
             }
-            if ( tvFV ) 
+            if ( tvFV )
                 tF.Vinv <- t(mod$FF) %*% crossprod(sqrtVinv)
 
-            if (!any(whereNA <- is.na(y[i, ]))) { ## No missing values       
+            if (!any(whereNA <- is.na(y[i, ]))) { ## No missing values
 
                 ## prior
                 a[i,] <- mod$GG %*% m[i,]
@@ -1181,7 +1194,7 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
                 D.C[i+1,] <- foo
                 m[i+1,] <- a[i,] + crossprod(D.C[i+1,]*t(U.C[[i+1]])) %*%
                     tF.Vinv %*% as.matrix(y[i,]-f[i,])
-                
+
             } else {
                 if (all(whereNA)) { ## All components missing
 
@@ -1224,13 +1237,13 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
 
         ans <- list(m=m,U.C=U.C,D.C=D.C,a=a,U.R=U.R,D.R=D.R,f=f)
     }
-    
+
     ans$m <- drop(ans$m); ans$a <- drop(ans$a); ans$f <- drop(ans$f)
     attributes(ans$f) <- yAttr
     if (!is.null(ytsp)) {
         tsp(ans$a) <- ytsp
         tsp(ans$m) <- c(ytsp[1] - 1/ytsp[3], ytsp[2:3])
-        class(ans$a) <- class(ans$m) <- if (length(mod$m0) > 1) c("mts","ts") else "ts" 
+        class(ans$a) <- class(ans$m) <- if (length(mod$m0) > 1) c("mts","ts") else "ts"
     }
     if (!(is.null(timeNames) && is.null(stateNames))) {
         dimnames(ans$a) <- list(timeNames, stateNames)
@@ -1264,7 +1277,7 @@ dlmSmooth.dlmFiltered <- function(y, ..., debug = FALSE)
 {
     big <- 1 / sqrt(.Machine$double.eps)
     mod <- c(y[match(c("m", "U.C", "D.C", "a", "U.R", "D.R"),names(y))],
-             y$mod[match(c("GG", "W", "JGG", "JW", "X"), names(y$mod))]) 
+             y$mod[match(c("GG", "W", "JGG", "JW", "X"), names(y$mod))])
     mAttr <- attributes(mod$m)
     mod$m <- as.matrix(mod$m)
     mod$a <- as.matrix(mod$a)
@@ -1320,7 +1333,7 @@ dlmSmooth.dlmFiltered <- function(y, ..., debug = FALSE)
             tmp <- La.svd(mod$W,nu=0)
             Dw <- sqrt(tmp$d)
             Dw.inv <- pmin(1/Dw, big)
-            sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1) 
+            sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1)
         }
         if (n > 0)
             for (i in n:1)
@@ -1333,7 +1346,7 @@ dlmSmooth.dlmFiltered <- function(y, ..., debug = FALSE)
                     tmp <- La.svd(mod$W,nu=0)
                     Dw <- sqrt(tmp$d)
                     Dw.inv <- pmin(1/Dw, big)
-                    sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1) 
+                    sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1)
                 }
                 Dinv <- 1/mod$D.R[i,]; Dinv[abs(Dinv)==Inf] <- 0
                 H <- crossprod(mod$D.C[i,]*t(mod$U.C[[i]])) %*%
@@ -1364,7 +1377,7 @@ dlmBSample <- function(modFilt)
 {
     eps <- .Machine$double.eps^.4
     mod <- c(modFilt[match(c("m", "U.C", "D.C", "a", "U.R", "D.R"),names(modFilt))],
-             modFilt$mod[match(c("GG", "W", "JGG", "JW", "X"), names(modFilt$mod))]) 
+             modFilt$mod[match(c("GG", "W", "JGG", "JW", "X"), names(modFilt$mod))])
     n <- length(mod$U.R) # number of obs
     p <- NCOL(mod$m) # dimension of state vector
     mtsp <- tsp(mod$m)
@@ -1391,10 +1404,10 @@ dlmBSample <- function(modFilt)
     ## preliminary calculations, if possible (time-invariant case)
     if ( !tvW ) {
         tmp <- La.svd(mod$W,nu=0)
-        Dw <- sqrt(tmp$d) 
+        Dw <- sqrt(tmp$d)
         Dw <- pmax(Dw, eps)
         Dw.inv <- 1/Dw
-        sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1) 
+        sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1)
         if ( !tvGG ) tG.Winv <- t(mod$GG) %*% crossprod(sqrtWinv)
     }
     ## generate last theta
@@ -1407,10 +1420,10 @@ dlmBSample <- function(modFilt)
         if ( tvW ) {
             mod$W[mod$JW[,-3,drop=FALSE]] <- mod$X[i,mod$JW[,3]]
             tmp <- La.svd(mod$W,nu=0)
-            Dw <- sqrt(tmp$d) 
+            Dw <- sqrt(tmp$d)
             Dw <- pmax(Dw, eps)
             Dw.inv <- 1/Dw
-            sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1) 
+            sqrtWinv <- Dw.inv * tmp$vt # t()%*%() = W^(-1)
         }
         if ( tvGW )
             tG.Winv <- t(mod$GG) %*% crossprod(sqrtWinv)
@@ -1427,7 +1440,7 @@ dlmBSample <- function(modFilt)
     {
         theta <- drop(theta)
         tsp(theta) <- mtsp
-        class(theta) <- if (p > 1) c("mts","ts") else "ts" 
+        class(theta) <- if (p > 1) c("mts","ts") else "ts"
     }
     return(theta=theta)
 }
@@ -1496,7 +1509,7 @@ dlmForecast <- function(mod, nAhead=1, method=c("plain","svd"), sampleNew=FALSE)
 
     if (! (is.null(mod$JFF) && is.null(mod$JV) && is.null(mod$JGG) && is.null(mod$JW)))
         stop("dlmForecast only works with constant models")
-    
+
     ytsp <- tsp(mod$m0)
     p <- length(mod$m0)
     m <- nrow(mod$FF)
@@ -1528,12 +1541,12 @@ dlmForecast <- function(mod, nAhead=1, method=c("plain","svd"), sampleNew=FALSE)
             newO[1,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[1,]
             if ( nAhead > 1 )
                 for (it in 2:nAhead) {
-                    newS[it,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + mod$GG %*% newS[it-1,] 
-                    newO[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[it,]            
+                    newS[it,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + mod$GG %*% newS[it-1,]
+                    newO[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + mod$FF %*% newS[it,]
                 }
             newStates[[i]] <- newS
             newObs[[i]] <- newO
-        }      
+        }
         if (!is.null(ytsp)) {
             a <- ts(a, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
             f <- ts(f, start = ytsp[2] + 1/ytsp[3], frequency = ytsp[3])
@@ -1550,8 +1563,8 @@ dlmForecast <- function(mod, nAhead=1, method=c("plain","svd"), sampleNew=FALSE)
         }
         ans <- list(a=a, R=R, f=f, Q=Q)
     }
-    
-    
+
+
     return(ans)
 }
 
@@ -1574,7 +1587,7 @@ residuals.dlmFiltered <- function(object, ...,
                                      diag(crossprod(object$D.R[i,] *
                                                     t(FF%*%object$U.R[[i]])) + V)))))
         }
-    } else 
+    } else
     if ( !tvFF ) { ## only V time-varying
         f <- object$a %*% t(FF)
         res <- drop(object$y - f) # one-step forecasting errors
@@ -1589,7 +1602,7 @@ residuals.dlmFiltered <- function(object, ...,
             }
             SD <- drop(t(sqrt(sapply(seq(along=object$U.R), getSD))))
         }
-    } else 
+    } else
     if ( !tvV ) { ## only FF time-varying
         if (!(sd || (type == "standardized"))) {
             nz <- object$mod$JFF != 0
@@ -1616,7 +1629,7 @@ residuals.dlmFiltered <- function(object, ...,
             res <- drop(object$y - tmp[,1:m])
             SD <- drop(sqrt(tmp[,-(1:m)]))
         }
-    } else { ## both FF and V time-varying 
+    } else { ## both FF and V time-varying
         if (!(sd || (type == "standardized"))) {
             nz <- object$mod$JFF != 0
             JFF <- cbind(row(object$mod$JFF)[nz], col(object$mod$JFF)[nz],
@@ -1647,7 +1660,7 @@ residuals.dlmFiltered <- function(object, ...,
             SD <- drop(sqrt(tmp[,-(1:m)]))
         }
     }
-    
+
     if ( type == "standardized" )
         res <- res / SD
     if (sd) {
@@ -1665,7 +1678,7 @@ tsdiag.dlmFiltered <- function (object, gof.lag = 10, ...) {
         on.exit(par(oldpar))
         plot(stdres, type = "h", main = "Standardized Residuals", ylab = "")
         abline(h = 0)
-        acf(stdres, plot = TRUE, main = "ACF of Residuals", 
+        acf(stdres, plot = TRUE, main = "ACF of Residuals",
             na.action = na.pass)
         nlag <- gof.lag
         pval <- numeric(nlag)
@@ -1682,7 +1695,7 @@ tsdiag.dlmFiltered <- function (object, gof.lag = 10, ...) {
             plot(stdres[,j], type = "h", main = "Standardized Residuals", ylab = "")
             abline(h = 0)
             if (ask) par(ask=FALSE)
-            acf(stdres[,j], plot = TRUE, main = "ACF of Residuals", 
+            acf(stdres[,j], plot = TRUE, main = "ACF of Residuals",
                 na.action = na.pass)
             nlag <- gof.lag
             pval <- numeric(nlag)
@@ -1795,7 +1808,7 @@ dlmRandom <- function(m, p, nobs = 0, JFF, JV, JGG, JW)
                     tmp <- La.svd(V,nu=0)
                     Ut.V <- tmp$vt; D.V <- sqrt(tmp$d)
                 }
-                newStates[it + 1,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + GG %*% newStates[it,] 
+                newStates[it + 1,] <- crossprod(Ut.W, rnorm(p, sd=D.W)) + GG %*% newStates[it,]
                 newObs[it,] <- crossprod(Ut.V, rnorm(m, sd=D.V)) + FF %*% newStates[it+1,]
             }
             mod <- dlm(list(m0=m0, C0=C0, FF=FF, V=V, GG=GG, W=W, JFF=JFF, JV=JV,
@@ -1878,7 +1891,7 @@ mcmcMean <- function(x, sd = TRUE)
         if ( v )
             sd <- univariateSD(x)
         else
-            sd <- apply(x, 2, univariateSD) 
+            sd <- apply(x, 2, univariateSD)
         ans <- rbind(mn, sd)
         dimnames(ans) <- list(c("mean", "sd"), nm)
         class(ans) <- "mcmcMean"
@@ -1889,7 +1902,9 @@ mcmcMean <- function(x, sd = TRUE)
     }
 }
 
-print.mcmcMean <- function(x, digits = getOption("digits"), ...) 
+mcmcMeans <- mcmcMean
+
+print.mcmcMean <- function(x, digits = getOption("digits"), ...)
 {
     ans <- format(x, digits = 3)
     ans[1, ] <- sapply(ans[1, ], function(x) paste("", x))
@@ -1898,9 +1913,9 @@ print.mcmcMean <- function(x, digits = getOption("digits"), ...)
     dn[[1]] <- rep("", 2)
     if (is.null(dn[[2]]))
         dn[[2]] <- paste('V', 1:dim(ans)[2], sep='.')
-    dn[[2]] <- paste(substring("      ", 1, (nchar(ans[2, ]) - 
+    dn[[2]] <- paste(substring("      ", 1, (nchar(ans[2, ]) -
         nchar(dn[[2]]))%/%2), dn[[2]])
-    dn[[2]] <- paste(dn[[2]], substring("      ", 1, (nchar(ans[2, 
+    dn[[2]] <- paste(dn[[2]], substring("      ", 1, (nchar(ans[2,
         ]) - nchar(dn[[2]]))%/%2))
     dimnames(ans) <- dn
     print(ans, quote = FALSE)
@@ -1940,7 +1955,7 @@ ergMean <- function(x, m = 1)
                     ans <- apply(rbind(colSums(x[1:m,]), x[(m+1):n,]), 2, cumsum) / m:n
             colnames(ans) <- nm
         }
-        else 
+        else
             stop("\'x\' must be a vector or a matrix")
     }
     return(ans)
@@ -1952,7 +1967,7 @@ dropFirst <- function(x)
 {
     st <- start(x) + c(0, 1)
     freq <- frequency(x)
-    newStart <- c(st[1], st[2] %% freq) + c(st[2] %/% freq, 0) 
+    newStart <- c(st[1], st[2] %% freq) + c(st[2] %/% freq, 0)
     y <- window(x, start = newStart)
     if (is.null(tsp(x)))
         attr(y, "tsp") <- NULL
@@ -1970,10 +1985,10 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
 ##################################################################################
 ### Gibbs sampler for the 'd-inverse-gamma' model                              ###
 ### Constant DLMs and univariate observations only                             ###
-###                                                                            ### 
+###                                                                            ###
 ### y       : data (vector or univariate time series).                         ###
 ### mod     : a dlm model for the data, with a diagonal 'W' component.         ###
-### a.y     : prior mean of the observation precision.                         ### 
+### a.y     : prior mean of the observation precision.                         ###
 ### b.y     : prior variance of the observation precision.                     ###
 ### a.theta : vector of prior mean(s) of the system precision(s);              ###
 ###           recycled if needed.                                              ###
@@ -2001,8 +2016,8 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
 ### TRUE). 'dV' contains the generated observation variances, 'dW' the         ###
 ### generated system variances, 'theta' the generated states.                  ###
 ##################################################################################
-##################################################################################    
-{    
+##################################################################################
+{
     msg1 <- "Either \"a.y\" and \"b.y\" or \"shape.y\" and \"rate.y\" must be specified"
     msg2 <- "Unexpected length of \"shape.y\" and/or \"rate.y\""
     msg3 <- "Unexpected length of \"a.y\" and/or \"b.y\""
@@ -2011,8 +2026,8 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
     msg5 <- "Unexpected length of \"shape.theta\" and/or \"rate.theta\""
     msg6 <- "Unexpected length of \"a.theta\" and/or \"b.theta\""
     msg7 <- "\"thin\" must be a nonnegative integer"
-    msg8 <- "multivariate observations are not allowed" 
-    msg9 <- "inadmissible value of \"ind\"" 
+    msg8 <- "multivariate observations are not allowed"
+    msg9 <- "inadmissible value of \"ind\""
     if ( NCOL(y) > 1 )
         stop(msg8)
     r <- ncol(mod$FF)
@@ -2032,7 +2047,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
         p <- r
     }
     nobs <- NROW(y)
-    if ( is.numeric(thin) && (thin <- as.integer(thin)) >= 0 ) 
+    if ( is.numeric(thin) && (thin <- as.integer(thin)) >= 0 )
     {
         every <- thin + 1
         mcmc <- n.sample * every
@@ -2046,7 +2061,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
             if ( !hasArg(rate.y) ) stop(msg1)
             else
             {
-                ## check length of shape.y and rate.y 
+                ## check length of shape.y and rate.y
                 if (!all(c(length(shape.y), length(rate.y)) == 1))
                     warning(msg2)
             }
@@ -2066,7 +2081,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
             if ( !hasArg(rate.theta) ) stop(msg4)
             else
             {
-                ## check length of shape.theta and rate.theta 
+                ## check length of shape.theta and rate.theta
                 if (!all(c(length(shape.theta), length(rate.theta)) %in% c(1,p)))
                     warning(msg5)
             }
@@ -2084,7 +2099,7 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
     shape.theta <- rep(shape.theta, length.out = p)
     rate.theta <- rep(rate.theta, length.out = p)
     theta <- matrix(0, nobs + 1, r)
-    if ( save.states ) 
+    if ( save.states )
         gibbsTheta <- array(0, dim = c(nobs + 1, r, n.sample))
     gibbsV <- vector("numeric", n.sample)
     gibbsW <- matrix(0, nrow = n.sample, ncol = p)
@@ -2100,15 +2115,15 @@ dlmGibbsDIG <- function(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
         y.center <- y - tcrossprod(theta[-1,,drop=FALSE], mod$FF)
         SSy <- drop(crossprod(y.center))
         mod$V[] <- 1 / rgamma(1, shape = shape.y,
-                              rate = rate.y + 0.5 * SSy) 
+                              rate = rate.y + 0.5 * SSy)
         ## generate W
         theta.center <- theta[-1,,drop=FALSE] -
             tcrossprod(theta[-(nobs + 1),,drop=FALSE], mod$GG)
         SStheta <- drop(sapply( 1 : p, function(i) crossprod(theta.center[,i])))
         SStheta <- colSums((theta[-1,1:p,drop=FALSE] -
                             tcrossprod(theta[-(nobs + 1),,drop=FALSE],mod$GG)[,1:p])^2)
-        diag(mod$W)[1:p] <- 
-            1 / rgamma(p, shape = shape.theta, rate = rate.theta + 0.5 * SStheta) 
+        diag(mod$W)[1:p] <-
+            1 / rgamma(p, shape = shape.theta, rate = rate.theta + 0.5 * SStheta)
         ## save
         if ( !(it %% every) )
         {

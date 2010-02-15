@@ -31,8 +31,6 @@ is.dlm(obj)
     may also be passed to the function as individual arguments.}     
   \item{obj}{an arbitrary \R object.}
 }
-\value{
-  For \code{dlm}, an object of class \code{"dlm"}.}
 \details{
   The function \code{dlm} is used to create Dynamic Linear Model
   objects. These are lists with the named elements described above and
@@ -41,6 +39,12 @@ is.dlm(obj)
   Class \code{"dlm"} has a number of methods. In particular, consistent
   DLM can be added together to produce another DLM.
 }
+\value{
+  For \code{dlm}, an object of class \code{"dlm"}.}
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). West and Harrison, Bayesian forecasting and
+  dynamic models (2nd ed.), Springer (1997).
+} 
 \seealso{\code{\link{dlmModReg}}, \code{\link{dlmModPoly}},
   \code{\link{dlmModARMA}}, \code{\link{dlmModSeas}}, to create
   particular objects of class \code{"dlm"}.   

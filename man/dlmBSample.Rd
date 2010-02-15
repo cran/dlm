@@ -27,8 +27,10 @@ dlmBSample(modFilt)
   value is a time series with the same \code{tsp}, otherwise it is 
   a matrix or vector.
 }
-\references{West and Harrison, Bayesian forecasting and dynamic models
-  (2nd ed.), Springer (1997).}
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). West and Harrison, Bayesian forecasting and
+  dynamic models (2nd ed.), Springer (1997).
+} 
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{See also \code{\link{dlmFilter}}}

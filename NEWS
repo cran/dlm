@@ -1,0 +1,8 @@
+Changes to package dlm
+
+Version 1.1-0, 2010-02-15
+  - In functions dlmLL and dlmFilter, whenever the observation
+    variance V is found to be numerically singular, an 'epsilon' 
+    is added to it (with a warning) in order to make the SVD-based 
+    algorithms work. 
+

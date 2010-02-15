@@ -31,7 +31,8 @@
   containing the data. This component will not be present if
   \code{object} was obtained by calling \code{dlmFilter} with
   \code{simplify = TRUE}.}
-\references{Harrison and West, Bayesian forecasting and dynamic models
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). Harrison and West, Bayesian forecasting and dynamic models
   (2nd ed.), Springer (1997).}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 

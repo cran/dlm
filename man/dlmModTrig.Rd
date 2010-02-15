@@ -37,9 +37,10 @@ dlmModTrig(s, q, om, tau, dV = 1, dW = 0, m0, C0)
 \value{
   An object of class dlm, representing a periodic component.
 }
-\references{West and Harrison, Bayesian forecasting and dynamic models
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). West and Harrison, Bayesian forecasting and dynamic models
   (2nd ed.), Springer, 1997.}
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModSeas}}, \code{\link{dlmModARMA}},
   \code{\link{dlmModPoly}}, \code{\link{dlmModReg}}} 

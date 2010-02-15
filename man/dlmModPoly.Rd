@@ -21,9 +21,10 @@ dlmModPoly(order = 2, dV = 1, dW = c(rep(0, order - 1), 1),
   An object of class dlm representing the required n-th order
   polynomial model.
 }
-\references{West and Harrison, Bayesian forecasting and dynamic models
+\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009). West and Harrison, Bayesian forecasting and dynamic models
   (2nd ed.), Springer, 1997.}
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModARMA}}, \code{\link{dlmModReg}},
   \code{\link{dlmModSeas}}}

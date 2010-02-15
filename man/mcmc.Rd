@@ -1,5 +1,6 @@
 \name{mcmc}
 \alias{mcmcMean}
+\alias{mcmcMeans}
 \alias{mcmcSD}
 \alias{ergMean}
 
@@ -10,6 +11,7 @@
 }
 \usage{
 mcmcMean(x, sd = TRUE)
+mcmcMeans(x, sd = TRUE)
 mcmcSD(x)
 ergMean(x, m = 1)
 }
@@ -27,13 +29,14 @@ ergMean(x, m = 1)
   matrix, rows are considered consecutive simulations of a target
   vector. In this case means, standard deviations, and ergodic means
   are returned for each column. The standard deviation of the mean is
-  estimated using Sokal's method (see the reference). 
+  estimated using Sokal's method (see the reference). \code{mcmcMeans}
+  is an alias for \code{mcmcMean}.
 }
 
 \references{P. Green (2001). A Primer on Markov Chain Monte Carlo. In
   \emph{Complex Stochastic Systems}, (Barndorff-Nielsen, Cox and
   Kl\"uppelberg, eds.). Chapman and Hall/CRC. }
-\author{Giovanni Petris, \email{GPetris@uark.edu}}
+\author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \examples{
 x <- matrix(rexp(1000), nc=4)
