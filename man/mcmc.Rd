@@ -25,7 +25,7 @@ ergMean(x, m = 1)
 }
 
 \details{
-  The argument \code{x} is tipically the output from a simulation. If a
+  The argument \code{x} is typically the output from a simulation. If a
   matrix, rows are considered consecutive simulations of a target
   vector. In this case means, standard deviations, and ergodic means
   are returned for each column. The standard deviation of the mean is
