@@ -31,10 +31,15 @@ dlmModARMA(ar = NULL, ma = NULL, sigma2 = 1, dV, m0, C0)
   The function returns an object of class dlm representing the ARMA
   model specified by \code{ar}, \code{ma}, and \code{sigma2}.
 }
-\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
-  R, Springer (2009). Durbin and Koopman, Time series analysis by state space 
+\references{Giovanni Petris (2010), An R Package for Dynamic Linear
+  Models. Journal of Statistical Software, 36(12), 1-16.
+  \url{http://www.jstatsoft.org/v36/i12/}.\cr
+  Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).\cr
+  Durbin and Koopman, Time series analysis by state space 
   methods, Oxford University Press, 2001.
 }
+
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModPoly}}, \code{\link{dlmModSeas}},

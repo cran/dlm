@@ -21,8 +21,12 @@ dlmModPoly(order = 2, dV = 1, dW = c(rep(0, order - 1), 1),
   An object of class dlm representing the required n-th order
   polynomial model.
 }
-\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
-  R, Springer (2009). West and Harrison, Bayesian forecasting and dynamic models
+\references{Giovanni Petris (2010), An R Package for Dynamic Linear
+  Models. Journal of Statistical Software, 36(12), 1-16.
+  \url{http://www.jstatsoft.org/v36/i12/}.\cr
+  Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).\cr
+  West and Harrison, Bayesian forecasting and dynamic models
   (2nd ed.), Springer, 1997.}
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 

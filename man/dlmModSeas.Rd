@@ -20,9 +20,14 @@ dlmModSeas(frequency, dV = 1, dW = c(1, rep(0, frequency - 2)),
   An object of class dlm representing a seasonal factor for a process
   with \code{frequency} seasons.
 }
-\references{Petris, Petrone, and Campagnoli, Dynamic Linear Models with
-  R, Springer (2009). Harvey, Forecasting, structural time series models and the
+\references{Giovanni Petris (2010), An R Package for Dynamic Linear
+  Models. Journal of Statistical Software, 36(12), 1-16.
+  \url{http://www.jstatsoft.org/v36/i12/}.\cr
+  Petris, Petrone, and Campagnoli, Dynamic Linear Models with
+  R, Springer (2009).\cr
+  Harvey, Forecasting, structural time series models and the
   Kalman filter, Cambridge University Press, 1989.}
+
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 
 \seealso{\code{\link{dlmModARMA}}, \code{\link{dlmModPoly}},
