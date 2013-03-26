@@ -30,28 +30,28 @@ void pmatrix(char *txt, double *x, /* print matrix, for debugging */
              int ldx, int m, int n)
 {
     int i, j;
-    printf("%s\n",txt);
+    Rprintf("%s\n",txt);
     for (i=0; i<m; i++)
     {
         for (j=0; j<n; j++)
-            printf("%6.5lg ",x[i+j*ldx]);
-        printf("\n");
+            Rprintf("%6.5lg ",x[i+j*ldx]);
+        Rprintf("\n");
     }
-    printf("\n");
+    Rprintf("\n");
 }
 
 void pIntMatrix(char *txt, int *x, /* print int matrix, for debugging */
              int ldx, int m, int n)
 {
     int i, j;
-    printf("%s\n",txt);
+    Rprintf("%s\n",txt);
     for (i=0; i<m; i++)
     {
         for (j=0; j<n; j++)
-            printf("%d ",x[i+j*ldx]);
-        printf("\n");
+            Rprintf("%d ",x[i+j*ldx]);
+        Rprintf("\n");
     }
-    printf("\n");
+    Rprintf("\n");
 }
 
 SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW)

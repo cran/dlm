@@ -432,7 +432,7 @@ dlmModReg <- function(X, addInt=TRUE, dV=1, dW=rep(0,NCOL(X)+addInt),
           length(m0)==p && nrow(C0)==p && ncol(C0)==p))
         stop("Inconsistent dimensions of arguments")
     X <- as.matrix(X)
-    JFF <- matrix(1:ncol(X),nr=1)
+    JFF <- matrix(1:ncol(X),nrow=1)
     if (addInt)
         JFF <- cbind(0,JFF)
     mod <- list(
@@ -466,7 +466,7 @@ dlmModPoly <- function(order=2, dV=1,
     mod <- list(
                 m0 = m0,
                 C0 = C0,
-                FF = matrix(c(1,rep(0,order-1)),nr=1),
+                FF = matrix(c(1,rep(0,order-1)),nrow=1),
                 V = as.matrix(dV),
                 GG = GG,
                 W = diag(dW,nrow=length(dW)),
@@ -494,7 +494,7 @@ dlmModSeas <- function(frequency, dV=1, dW=c(1,rep(0,frequency-2)),
     mod <- list(
                 m0 = m0,
                 C0 = C0,
-                FF = matrix(c(1,rep(0,p-1)),nr=1),
+                FF = matrix(c(1,rep(0,p-1)),nrow=1),
                 V = as.matrix(dV),
                 GG = GG,
                 W = diag(dW,nrow=length(dW)),
@@ -669,10 +669,10 @@ dlmModARMA <- function(ar=NULL, ma=NULL, sigma2=1, dV, m0, C0)
         mod <- list(
                     m0 = m0,
                     C0 = C0,
-                    FF = matrix(c(1,rep(0,r-1)),nr=1),
+                    FF = matrix(c(1,rep(0,r-1)),nrow=1),
                     V = matrix(dV),
                     GG = GG,
-                    W = sigma2 * crossprod(matrix(R,nr=1)),
+                    W = sigma2 * crossprod(matrix(R,nrow=1)),
                     JFF = NULL,
                     JV = NULL,
                     JGG = NULL,
@@ -1127,9 +1127,9 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
             mod$JW <- cbind(row(mod$JW)[nz], col(mod$JW)[nz], mod$JW[nz])
         }
         tvFV <- tvFF || tvV
-        m <- rbind(mod$m0,matrix(0,nr=nrow(y),nc=length(mod$m0))) # filtered values
-        a <- matrix(0,nr=nrow(y),nc=length(mod$m0))
-        f <- matrix(0,nr=nrow(y),nc=ncol(y))
+        m <- rbind(mod$m0,matrix(0,nrow=nrow(y),ncol=length(mod$m0))) # filtered values
+        a <- matrix(0,nrow=nrow(y),ncol=length(mod$m0))
+        f <- matrix(0,nrow=nrow(y),ncol=ncol(y))
         U.C <- vector(1+nrow(y),mode="list")
         D.C <- matrix(0,1+nrow(y),length(mod$m0))
         U.R <- vector(nrow(y),mode="list")
@@ -1245,24 +1245,28 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
         tsp(ans$m) <- c(ytsp[1] - 1/ytsp[3], ytsp[2:3])
         class(ans$a) <- class(ans$m) <- if (length(mod$m0) > 1) c("mts","ts") else "ts"
     }
-    if (!(is.null(timeNames) && is.null(stateNames))) {
-        dimnames(ans$a) <- list(timeNames, stateNames)
-        dimnames(ans$m) <- list(if(is.null(timeNames)) NULL else c("",timeNames),
-                                stateNames)
-    }
+    if (!(is.null(timeNames) && is.null(stateNames)))
+        if (is.matrix(ans$a))
+        {
+            dimnames(ans$a) <- list(timeNames, stateNames)
+            dimnames(ans$m) <- list(if(is.null(timeNames)) NULL else c("",timeNames),
+                                    stateNames)
+        }
+        else
+            if (!is.null(timeNames))
+            {
+                names(ans$a) <- timeNames
+                names(ans$m) <- c("", timeNames)
+            }
     if (simplify)
-    {
         ans <- c(mod=list(mod1), ans)
-        class(ans) <- "dlmFiltered"
-        return(ans)
-    }
     else
     {
         attributes(y) <- yAttr
         ans <- c(y=list(y), mod=list(mod1), ans)
-        class(ans) <- "dlmFiltered"
-        return(ans)
     }
+    class(ans) <- "dlmFiltered"
+    return(ans)
 }
 
 dlmSmooth <- function(y, ...)
@@ -1769,10 +1773,10 @@ dlmRandom <- function(m, p, nobs = 0, JFF, JV, JGG, JW)
             Ut.V <- tmp$vt; D.V <- sqrt(tmp$d)
         }
         if (any(c(tvFF, tvV, tvGG, tvW))) {
-            newStates <- matrix(0, nr = nobs + 1, nc = p)
-            newObs <- matrix(0, nr = nobs, nc = m)
-            X <- matrix(0, nr = nobs,
-                        nc = m * p * tvFF + m * m * tvV +
+            newStates <- matrix(0, nrow = nobs + 1, ncol = p)
+            newObs <- matrix(0, nrow = nobs, ncol = m)
+            X <- matrix(0, nrow = nobs,
+                        ncol = m * p * tvFF + m * m * tvV +
                         p * p * tvGG + p * p * tvW)
             tmp <- La.svd(C0,nu=0)
             newStates[1,] <- crossprod(tmp$vt, rnorm(p, sd=sqrt(tmp$d)))
@@ -1950,7 +1954,7 @@ ergMean <- function(x, m = 1)
                 ans <- apply(x, 2, cumsum) / 1:n
             else
                 if ( m == n )
-                    ans <- matrix(colMeans(x), nr = 1)
+                    ans <- matrix(colMeans(x), nrow = 1)
                 else
                     ans <- apply(rbind(colSums(x[1:m,]), x[(m+1):n,]), 2, cumsum) / m:n
             colnames(ans) <- nm

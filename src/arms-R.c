@@ -367,7 +367,7 @@ void invert(double prob, ENVELOPE *env, POINT *p)
   }
 
   /* guard against imprecision yielding point outside interval */
-  if ((p->x < xl) || (p->x > xr))exit(1);
+  if ((p->x < xl) || (p->x > xr)) error("exit 1");
 
   return;
 }
@@ -524,7 +524,7 @@ int update(ENVELOPE *env, POINT *p, SEXP myldens, METROPOLIS *metrop, SEXP rho)
     q->pl->pr = q;
   } else {
     /* this should be impossible */
-    exit(10);
+      error("exit 10");
   }
 
   /* now adjust position of q within interval if too close to an endpoint */
@@ -624,7 +624,7 @@ int meet (POINT *q, ENVELOPE *env, METROPOLIS *metrop)
 
   if(q->f){
     /* this is not an intersection point */
-    exit(30);
+      error("exit 30");
   }
 
   /* calculate coordinates of point of intersection */
@@ -708,12 +708,12 @@ int meet (POINT *q, ENVELOPE *env, METROPOLIS *metrop)
     q->y = q->pr->y - gr * (q->pr->x - q->x);
   } else {
     /* gradient on neither side - should be impossible */
-    exit(31);
+      error("exit 31");
   }
   if(((q->pl != NULL) && (q->x < q->pl->x)) ||
      ((q->pr != NULL) && (q->x > q->pr->x))){
     /* intersection point outside interval (through imprecision) */
-    exit(32);
+      error("exit 32");
   }
   /* successful exit : intersection has been calculated */
   return 0;
@@ -730,7 +730,7 @@ double area(POINT *q)
 
   if(q->pl == NULL){
     /* this is leftmost point in envelope */
-    exit(1);
+      error("exit 1");
   } else if(q->pl->x == q->x){
     /* interval is zero length */
     a = 0.;
