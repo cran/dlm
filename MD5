@@ -1,15 +1,17 @@
-2c4bed37d48cb23963076f8a5383d680 *DESCRIPTION
+51db4439052d10d2f986f5a76edcb51d *DESCRIPTION
 9f8cceb9f83449d33064778d0a0d36fb *NAMESPACE
 90dc116a08063be30d387b6b71fdc0bf *NEWS
 4594fa0053099904beacb4916b8620c3 *R/DLM.R
 312d1ccc2effcb9802392cc41cd01f54 *R/arms.R
 bdf8a917d3b9cf3779eaac5ec96cc05b *R/zzz.R
 e7ee8f67aac4f997bd3e7904971511d9 *README
-95cdfc23c14df3306a4bca78b0f2f24b *data/NelPlo.rda
-4d65aadada6ae342c6634154991ba44d *data/USecon.rda
+f8db75bb0d6972e42c1dfa4019005822 *build/vignette.rds
+c54b0d175bc358e96f1ff67709eb559e *data/NelPlo.rda
+0e5e467ab7aef1f3b982e32918bdf14f *data/USecon.rda
 bc2e63a74f02804a213e3b4cfad3df38 *inst/CITATION
+19e6d78b914bb4279daf6575e47d12ba *inst/doc/dlm.R
 860f74f3cb8acf9c54f974a1a5e2b7c7 *inst/doc/dlm.Rnw
-0aa44fb8193d0f0f209338c2164c5f6c *inst/doc/dlm.pdf
+6f34607f67c2f3040308dec313f2754e *inst/doc/dlm.pdf
 7f6857db40ee5f3ee044decd88eb5160 *man/ARtransPars.Rd
 8cf55f2456a9a5ad15f061b292dd54c7 *man/FF.Rd
 654de1a3180e8f3b89e038c0f1be4b99 *man/NelPlo.Rd
@@ -40,3 +42,4 @@ a4e697177302079349af13818b10da20 *man/rwishart.Rd
 2a6f9e9e044a78154d3cfda5936d6f48 *src/Makevars
 a255d69e222cf5acc26565c68935aae0 *src/arms-R.c
 087683aa1d097602149318fc773fdb9f *src/dlm.c
+860f74f3cb8acf9c54f974a1a5e2b7c7 *vignettes/dlm.Rnw
