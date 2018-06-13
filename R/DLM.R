@@ -36,7 +36,7 @@ bdiag <- function(...)
 ###### J. Statist. Comput. Simul. 24.
 ARtransPars <- function(raw) {
     p <- length(raw)
-    return(.Call("ARtranspar", p, as.double(raw), PACKAGE="dlm"))
+    return(.Call(C_ARtranspar, p, as.double(raw), PACKAGE="dlm"))
 }
 
 ###### Constructor for dlm objects
@@ -864,10 +864,10 @@ dlmLL <- function(y, mod, debug=FALSE)
         if (any(c(tvFF,tvV,tvGG,tvW))) {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W",
                                "JFF", "JV", "JGG", "JW", "X"), names(mod))]
-            return(.Call("dlmLL", y, mod, tvFF, tvV, tvGG, tvW, PACKAGE="dlm"))
+            return(.Call(C_dlmLL, y, mod, tvFF, tvV, tvGG, tvW, PACKAGE="dlm"))
         } else {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))]
-            return(.Call("dlmLL0", y, mod, PACKAGE="dlm"))
+            return(.Call(C_dlmLL0, y, mod, PACKAGE="dlm"))
         }
     }
     else {
@@ -1089,10 +1089,10 @@ dlmFilter <- function(y, mod, debug = FALSE, simplify = FALSE)
         if (any(c(tvFF,tvV,tvGG,tvW))) {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W",
                                "JFF", "JV", "JGG", "JW", "X"), names(mod))]
-            ans <- .Call("dlmFilter", y, mod, tvFF, tvV, tvGG, tvW, PACKAGE = "dlm")
+            ans <- .Call(C_dlmFilter, y, mod, tvFF, tvV, tvGG, tvW, PACKAGE = "dlm")
         } else {
             mod <- mod[match(c("m0", "C0", "FF", "V", "GG", "W"), names(mod))]
-            ans <- .Call("dlmFilter0", y, mod, PACKAGE = "dlm")
+            ans <- .Call(C_dlmFilter0, y, mod, PACKAGE = "dlm")
         }
         names(ans) <- c("m", "U.C", "D.C", "a", "U.R", "D.R", "f")
     }
@@ -1304,11 +1304,11 @@ dlmSmooth.dlmFiltered <- function(y, ..., debug = FALSE)
             storage.mode(mod$JW) <- "integer"
         }
         if (tvGG || tvW) {
-            ans <- .Call("dlmSmooth", mod, tvGG, tvW, big, PACKAGE="dlm")
+            ans <- .Call(C_dlmSmooth, mod, tvGG, tvW, big, PACKAGE="dlm")
             names(ans) <- c("s", "U.S", "D.S")
         }
         else {
-            ans <- .Call("dlmSmooth0", mod, big, PACKAGE="dlm")
+            ans <- .Call(C_dlmSmooth0, mod, big, PACKAGE="dlm")
             names(ans) <- c("s", "U.S", "D.S")
         }
         } else {

@@ -44,8 +44,7 @@ Adaptive rejection Metropolis sampling within Gibbs sampling
 
 \author{Giovanni Petris \email{GPetris@uark.edu}}
 \note{The function is based on original C code by W. Gilks for the 
-univariate case, 
-\url{http://www.mrc-bsu.cam.ac.uk/pub/methodology/adaptive_rejection/}.
+univariate case.
 }
 
 

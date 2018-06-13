@@ -1,10 +1,17 @@
-useDynLib(dlm)
-exportPattern("^dlm")
+useDynLib(dlm, .registration = TRUE, .fixes = "C_")
+exportPattern("^dlm[^\\.]*$")
 export(arms, ARtransPars, as.dlm, bdiag, convex.bounds, is.dlm,
        rwishart, mcmcMean, mcmcMeans, mcmcSD, ergMean, "%+%", dropFirst,
        FF, "FF<-", V, "V<-", GG, "GG<-", W, "W<-", C0, "C0<-", m0, "m0<-",
        JFF, "JFF<-", JV, "JV<-", JGG, "JGG<-", JW, "JW<-", X, "X<-")
-importFrom(stats, tsdiag)
+importFrom("grDevices", "dev.interactive")
+importFrom("graphics", "abline", "mtext", "par", "plot")
+importFrom("methods", "hasArg")
+importFrom("stats", "Box.test", "acf", "end", "frequency", "is.ts",
+           "na.pass", "optim", "rchisq", "residuals", "rgamma",
+           "rnorm", "runif", "start", "ts", "tsdiag", "tsp", "tsp<-", "var",
+           "window")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar")
 S3method(print, dlm)
 S3method(FF, dlm)
 S3method("FF<-", dlm)
@@ -31,5 +38,6 @@ S3method("X<-", dlm)
 S3method(print, mcmcMean)
 S3method("+", dlm)
 S3method(dlmSmooth, dlmFiltered)
+S3method(dlmSmooth, default)
 S3method(residuals, dlmFiltered)
 S3method(tsdiag, dlmFiltered)

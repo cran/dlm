@@ -2,6 +2,7 @@
 # include <R.h>
 # include <Rinternals.h>
 # include <Rmath.h>
+# include <R_ext/Rdynload.h>
 
 
 static double sqrarg;
@@ -15,6 +16,32 @@ SEXP dlmSmooth();
 SEXP dlmSmooth0(); /* for time-invariant models */
 SEXP dlmForecast();
 SEXP ARtranspar();
+SEXP arms();
+
+/** register native routines **/
+static const
+R_CallMethodDef callMethods[] = {
+  {"ARtranspar", (DL_FUNC) &ARtranspar, 2},
+  {"dlmLL", (DL_FUNC) &dlmLL, 6},
+  {"dlmLL0", (DL_FUNC) &dlmLL0, 2},
+  {"dlmFilter", (DL_FUNC) &dlmFilter, 6},
+  {"dlmFilter0", (DL_FUNC) &dlmFilter0, 2},
+  {"dlmSmooth", (DL_FUNC) &dlmSmooth, 4},
+  {"dlmSmooth0", (DL_FUNC) &dlmSmooth0, 2},
+  {"arms", (DL_FUNC) &arms, 5},
+  {NULL, NULL, 0}
+};
+
+void R_init_dlm(DllInfo *info)
+{
+  /* Register the .Call routines.
+     No .C(), .Fortran() or .External() routines,
+     so pass those arrays as NULL.
+  */
+  R_registerRoutines(info, NULL, callMethods, NULL, NULL);
+  R_useDynamicSymbols(info, FALSE);
+}
+
 
 void F77_NAME(dgesdd)(const char *jobz,
                       const int *m, const int *n,
