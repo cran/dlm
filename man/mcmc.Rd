@@ -33,6 +33,15 @@ ergMean(x, m = 1)
   is an alias for \code{mcmcMean}.
 }
 
+\value{
+  \code{mcmcMean} returns the sample mean of a vector containing the output
+  of an MCMC sampler, together with an estimated standard error. If the input
+  is a matrix, means and standard errors are computed for each column.\cr
+  \code{mcmcSD} returns an estimate of the standard deviation of the mean for
+  the output of an MCMC sampler.\cr
+  \code{ergMean} returns a vector of running ergodic means.
+}
+  
 \references{P. Green (2001). A Primer on Markov Chain Monte Carlo. In
   \emph{Complex Stochastic Systems}, (Barndorff-Nielsen, Cox and
   Kl\"uppelberg, eds.). Chapman and Hall/CRC. }

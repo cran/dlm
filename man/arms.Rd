@@ -50,7 +50,7 @@ univariate case.
 
 \examples{
 #### ==> Warning: running the examples may take a few minutes! <== ####    
-\dontrun{
+\donttest{
 set.seed(4521222)
 ### Univariate densities
 ## Unif(-r,r) 

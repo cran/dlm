@@ -8,15 +8,15 @@
 static double sqrarg;
 # define SQR(x) ((sqrarg = (x)) == 0.0 ? 0.0 : sqrarg*sqrarg)
 
-SEXP dlmLL();
-SEXP dlmLL0(); /* for time-invariant models */
-SEXP dlmFilter();
-SEXP dlmFilter0(); /* for time-invariant models */
-SEXP dlmSmooth();
-SEXP dlmSmooth0(); /* for time-invariant models */
-SEXP dlmForecast();
-SEXP ARtranspar();
-SEXP arms();
+SEXP dlmLL(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW);
+SEXP dlmLL0(SEXP y, SEXP mod); /* for time-invariant models */
+SEXP dlmFilter(SEXP y, SEXP mod, SEXP tvFF, SEXP tvV, SEXP tvGG, SEXP tvW);
+SEXP dlmFilter0(SEXP y, SEXP mod); /* for time-invariant models */
+SEXP dlmSmooth(SEXP mod, SEXP tvGG, SEXP tvW, SEXP big);
+SEXP dlmSmooth0(SEXP mod, SEXP big); /* for time-invariant models */
+SEXP dlmForecast(SEXP mod, SEXP nAhead);
+SEXP ARtranspar(SEXP Rp, SEXP Rraw);
+SEXP arms(SEXP bounds, SEXP myldens, SEXP yprev, SEXP size, SEXP rho);
 
 /** register native routines **/
 static const
@@ -50,8 +50,8 @@ void F77_NAME(dgesdd)(const char *jobz,
                       double *vt, const int *ldvt,
                       double *work, const int *lwork, int *iwork, int *info);
 
-void pmatrix();
-void pIntMatrix();
+void pmatrix(char *txt, double *x, int ldx, int m, int n);
+void pIntMatrix(char *txt, int *x, int ldx, int m, int n);
 
 void pmatrix(char *txt, double *x, /* print matrix, for debugging */
              int ldx, int m, int n)

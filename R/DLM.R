@@ -1274,6 +1274,7 @@ dlmSmooth <- function(y, ...)
 
 dlmSmooth.default <- function(y, mod, ...)
 {
+    ## mod1 <- unserialize(serialize(mod, NULL))
     dlmSmooth(dlmFilter(y, mod, ...), ...)
 }
 
@@ -1304,7 +1305,8 @@ dlmSmooth.dlmFiltered <- function(y, ..., debug = FALSE)
             storage.mode(mod$JW) <- "integer"
         }
         if (tvGG || tvW) {
-            ans <- .Call(C_dlmSmooth, mod, tvGG, tvW, big, PACKAGE="dlm")
+            mod1 <- unserialize(serialize(mod, NULL))
+            ans <- .Call(C_dlmSmooth, mod1, tvGG, tvW, big, PACKAGE="dlm")
             names(ans) <- c("s", "U.S", "D.S")
         }
         else {

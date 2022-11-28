@@ -52,7 +52,7 @@ dlmGibbsDIG(y, mod, a.y, b.y, a.theta, b.theta, shape.y, rate.y,
 }
 \references{Giovanni Petris (2010), An R Package for Dynamic Linear
   Models. Journal of Statistical Software, 36(12), 1-16.
-  \url{http://www.jstatsoft.org/v36/i12/}.\cr
+  \url{https://www.jstatsoft.org/v36/i12/}.\cr
   Petris, Petrone, and Campagnoli, Dynamic Linear Models with
   R, Springer (2009).
 }
