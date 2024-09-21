@@ -778,7 +778,7 @@ outGibbs <- dlmGibbsDIG(lGas, dlmModPoly(2) + dlmModSeas(4),
 <<echo=false, fig=true>>=
 burn <- 100
 attach(outGibbs)
-opar <- par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
+par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
 plot(dV[-(1:burn)], type = 'l', xlab="", ylab="", main=expression(sigma^2))
 plot(dW[-(1:burn),1], type = 'l', xlab="", ylab="", main=expression(sigma[beta]^2))
 plot(dW[-(1:burn),2], type = 'l', xlab="", ylab="", main=expression(sigma[s]^2))
@@ -792,7 +792,6 @@ axis(1, at=at-from, labels=format(at))
 plot(ergMean(dW[-(1:burn),2], from), type="l", xaxt="n",xlab="", ylab="")
 axis(1, at=at-from, labels=format(at))
 detach()
-par(opar)
 @ 
   \caption{Trace plots (top) and running ergodic means (bottom)}
   \label{fig:gibbsUKgas}
@@ -809,7 +808,7 @@ attach(outGibbs)
 dV <- dV[-(1:burn)]
 dW <- dW[-(1:burn), ]
 detach()
-par <- par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
+par(mfrow=c(2,3), mar=c(3.1,2.1,2.1,1.1))
 plot(dV, type = 'l', xlab = "", ylab = "", 
      main = expression(sigma^2))
 plot(dW[ , 1], type = 'l', xlab = "", ylab = "", 
@@ -828,7 +827,6 @@ axis(1, at = at - from, labels = format(at))
 plot(ergMean(dW[ , 2], from), type = 'l', xaxt = 'n',
      xlab = "", ylab = "")
 axis(1, at =  at - from, labels = format(at))
-par(opar)
 @ 
 
 Posterior estimates of the three unknown variances, from the Gibbs sampler

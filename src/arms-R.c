@@ -110,7 +110,7 @@ SEXP arms (SEXP bounds, SEXP myldens, SEXP yprev, SEXP size, SEXP rho) {
 
     /* set up space required for envelope */
     /* env = (ENVELOPE *)malloc(sizeof(ENVELOPE)); */
-    env = (ENVELOPE *)Calloc(1, ENVELOPE);
+    env = (ENVELOPE *)R_Calloc(1, ENVELOPE);
     if(env == NULL){
         /* insufficient space */
         error("insufficient space");
@@ -118,7 +118,7 @@ SEXP arms (SEXP bounds, SEXP myldens, SEXP yprev, SEXP size, SEXP rho) {
 
     /* start setting up metropolis struct */
     /* metrop = (METROPOLIS *)malloc(sizeof(METROPOLIS)); */
-    metrop = (METROPOLIS *)Calloc(1, METROPOLIS);
+    metrop = (METROPOLIS *)R_Calloc(1, METROPOLIS);
     if(metrop == NULL){
         /* insufficient space */
          error("insufficient space");
@@ -161,9 +161,9 @@ SEXP arms (SEXP bounds, SEXP myldens, SEXP yprev, SEXP size, SEXP rho) {
     /* nsamp points now sampled */
 
     /* free space */
-    Free(env->p);
-    Free(env);
-    Free(metrop);
+    R_Free(env->p);
+    R_Free(env);
+    R_Free(metrop);
 
     UNPROTECT(1);
     return ysamp;
@@ -231,7 +231,7 @@ int initial (double *xinit, int ninit, double xl, double xr, int npoint,
   /* set up space for envelope POINTs */
   env->npoint = npoint;
   /* env->p = (POINT *)malloc(npoint*sizeof(POINT)); */
-  env->p = (POINT *)Calloc(npoint, POINT);
+  env->p = (POINT *)R_Calloc(npoint, POINT);
   if(env->p == NULL){
     /* insufficient space */
     return 1006;

@@ -1,33 +1,23 @@
 citHeader("To cite dlm in publications use:")
 
-citEntry(entry = "Article",
+bibentry("Article",
   title        = "An {R} Package for Dynamic Linear Models",
-  author       = personList(as.person("Giovanni Petris")),
+  author       = as.person("Giovanni Petris"),
   journal      = "Journal of Statistical Software",
   year         = "2010",
   volume       = "36",
   number       = "12",
   pages        = "1--16",
-  url          = "https://www.jstatsoft.org/v36/i12/",
-
-  textVersion  =
-  paste("Giovanni Petris (2010).",
-        "An R Package for Dynamic Linear Models.",
-        "Journal of Statistical Software, 36(12), 1-16.",
-        "URL https://www.jstatsoft.org/v36/i12/.")
+  url          = "https://www.jstatsoft.org/v36/i12/"
 )
 
-citEntry(entry = "Book",
+bibentry("Book",
          title = "Dynamic Linear Models with R",
-         author = personList(as.person("Giovanni Petris"),
-         as.person("Sonia Petrone"),
-         as.person("Patrizia Campagnoli")),
+         author = c(as.person("Giovanni Petris"),
+                    as.person("Sonia Petrone"),
+                    as.person("Patrizia Campagnoli")),
          year = 2009,
          series = "useR!",
-         publisher = "Springer-Verlag, New York",
-         textVersion = 
-	 paste("Petris, Petrone, and Campagnoli.", 
-	       "Dynamic Linear Models with R.",
-               "Springer (2009).")
+         publisher = "Springer-Verlag, New York"
 )
 

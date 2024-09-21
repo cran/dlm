@@ -1,6 +1,6 @@
 Package: dlm
 Title: Bayesian and Likelihood Analysis of Dynamic Linear Models
-Version: 1.1-6
+Version: 1.1-6.1
 Date: 2022-11-12
 Suggests: MASS
 Imports: stats, utils, methods, grDevices, graphics
@@ -14,8 +14,8 @@ Description: Provides routines for Maximum likelihood,
     Dynamic Linear Models. 
 License: GPL (>= 2)
 NeedsCompilation: yes
-Packaged: 2022-11-25 20:09:08 UTC; gpetris
+Packaged: 2024-09-21 08:09:52 UTC; hornik
 Author: Giovanni Petris [aut, cre],
   Wally Gilks [ctb] (Author of original C code for ARMS)
 Repository: CRAN
-Date/Publication: 2022-11-28 09:50:04 UTC
+Date/Publication: 2024-09-21 08:15:41 UTC
